@@ -1,0 +1,660 @@
+name: Tạo GitHub Issues cho dự án
+
+on:
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  create-labels:
+    name: Tạo Labels
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Tạo labels cho issues
+        run: |
+          gh label create "backend" --repo "${{ github.repository }}" --color "0075ca" --description "Backend tasks" 2>/dev/null || true
+          gh label create "frontend" --repo "${{ github.repository }}" --color "e4e669" --description "Frontend tasks" 2>/dev/null || true
+          gh label create "security" --repo "${{ github.repository }}" --color "d73a4a" --description "Security related" 2>/dev/null || true
+          gh label create "testing" --repo "${{ github.repository }}" --color "0e8a16" --description "Testing tasks" 2>/dev/null || true
+
+  create-backend-issues:
+    name: Tạo Issues Backend
+    runs-on: ubuntu-latest
+    needs: create-labels
+    steps:
+      - name: "[BE-01] Thiết kế CSDL & cấu trúc dự án ASP.NET MVC"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[BE-01] Thiết kế CSDL & cấu trúc dự án ASP.NET MVC" \
+            --label "backend" \
+            --body "## Mô tả
+          Thiết kế cơ sở dữ liệu và cấu trúc dự án ASP.NET MVC cho hệ thống đặt xe.
+
+          ## Công việc cần làm
+          - [ ] Tạo dự án ASP.NET MVC mới
+          - [ ] Thiết kế ERD (Entity Relationship Diagram) cho các bảng: Users, Roles, Vehicles, Bookings, Payments
+          - [ ] Tạo DbContext và các Entity Model sử dụng Entity Framework
+          - [ ] Cấu hình connection string và migrations
+          - [ ] Seed dữ liệu mẫu (admin account, vehicle categories, sample vehicles)
+          - [ ] Cấu hình Dependency Injection
+
+          ## Yêu cầu kỹ thuật
+          - ASP.NET MVC 5 hoặc ASP.NET Core MVC
+          - Entity Framework (Code First)
+          - SQL Server
+
+          ## Tiêu chí hoàn thành
+          - Dự án chạy được, database được tạo thành công
+          - Seed data hoạt động đúng" 2>/dev/null || echo "Issue already exists or label missing, skipping"
+
+      - name: "[BE-02] Xác thực người dùng & phân quyền (Admin/Khách hàng)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[BE-02] Xác thực người dùng & phân quyền (Admin/Khách hàng)" \
+            --label "backend" \
+            --body "## Mô tả
+          Xây dựng hệ thống đăng nhập, đăng ký và phân quyền với tối thiểu 2 lớp người dùng: Admin và Khách hàng.
+
+          ## Công việc cần làm
+          - [ ] Xây dựng chức năng đăng ký tài khoản (Customer)
+          - [ ] Xây dựng chức năng đăng nhập / đăng xuất
+          - [ ] Sử dụng ASP.NET Identity hoặc tự xây dựng Authentication
+          - [ ] Phân quyền Role: Admin và Customer
+          - [ ] Áp dụng \`[Authorize(Roles = \"Admin\")]\` cho các Controller/Action Admin
+          - [ ] Áp dụng \`[Authorize]\` cho các trang yêu cầu đăng nhập
+          - [ ] Trang đăng nhập, đăng ký với Validation
+          - [ ] Redirect đúng trang sau khi đăng nhập theo Role
+
+          ## Yêu cầu kỹ thuật
+          - ASP.NET Identity hoặc Custom Authentication
+          - Data Annotation Validation
+          - Attribute-based Authorization
+
+          ## Tiêu chí hoàn thành
+          - Admin truy cập được trang quản trị, Customer không truy cập được
+          - Khách vãng lai bị redirect về trang đăng nhập khi cố truy cập trang cần xác thực" 2>/dev/null || echo "Skipping"
+
+      - name: "[BE-03] Quản lý Session & Cookie"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[BE-03] Quản lý Session & Cookie" \
+            --label "backend" \
+            --body "## Mô tả
+          Triển khai quản lý Session và Cookie trong hệ thống.
+
+          ## Công việc cần làm
+          - [ ] Lưu thông tin người dùng vào Session sau khi đăng nhập (tên, role, avatar)
+          - [ ] Sử dụng Cookie để \"Ghi nhớ đăng nhập\" (Remember Me - 30 ngày)
+          - [ ] Lưu lịch sử tìm kiếm/lọc xe vào Session
+          - [ ] Xử lý giỏ đặt xe tạm thời bằng Session (nếu chưa đăng nhập)
+          - [ ] Tự động xóa Session khi đăng xuất
+          - [ ] Cấu hình Session timeout
+
+          ## Yêu cầu kỹ thuật
+          - ASP.NET Session State
+          - HTTP Cookie
+          - Bảo mật cookie (HttpOnly, Secure flags)
+
+          ## Tiêu chí hoàn thành
+          - Session hoạt động xuyên suốt các request
+          - Cookie Remember Me hoạt động đúng sau khi đóng trình duyệt" 2>/dev/null || echo "Skipping"
+
+      - name: "[BE-04] CRUD Quản lý Xe (Vehicle Management)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[BE-04] CRUD Quản lý Xe (Vehicle Management)" \
+            --label "backend" \
+            --body "## Mô tả
+          Xây dựng đầy đủ chức năng thêm/sửa/xóa/xem danh sách xe cho Admin.
+
+          ## Công việc cần làm
+          - [ ] VehicleController với các action: Index, Create, Edit, Delete, Details
+          - [ ] View danh sách xe với Paging và Filtering
+          - [ ] Form thêm xe mới với Data Annotation Validation
+          - [ ] Form chỉnh sửa thông tin xe
+          - [ ] Xóa xe (soft delete hoặc hard delete, kiểm tra ràng buộc booking)
+          - [ ] Hiển thị chi tiết xe
+          - [ ] Lọc xe theo: loại xe, giá, tình trạng, hãng xe
+          - [ ] Tìm kiếm xe theo tên/biển số
+
+          ## Yêu cầu kỹ thuật
+          - Data Annotation (Required, StringLength, Range, RegularExpression)
+          - Server-side Paging (PagedList hoặc tự xây dựng)
+          - Anti-forgery token cho POST forms
+
+          ## Tiêu chí hoàn thành
+          - CRUD hoạt động đúng, validation báo lỗi rõ ràng
+          - Phân trang hoạt động khi có nhiều xe" 2>/dev/null || echo "Skipping"
+
+      - name: "[BE-05] CRUD Quản lý Đặt xe (Booking Management)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[BE-05] CRUD Quản lý Đặt xe (Booking Management)" \
+            --label "backend" \
+            --body "## Mô tả
+          Xây dựng chức năng đặt xe cho Customer và quản lý đơn đặt xe cho Admin.
+
+          ## Công việc cần làm
+          - [ ] BookingController: tạo đặt xe mới, xem lịch sử đặt xe
+          - [ ] Customer: chọn xe → chọn ngày đặt → xác nhận → thanh toán
+          - [ ] Kiểm tra xe còn trống trong khoảng thời gian đặt
+          - [ ] Admin: xem tất cả booking, duyệt/từ chối/hủy booking
+          - [ ] Customer: hủy booking (trước thời hạn)
+          - [ ] Gửi email xác nhận đặt xe (tùy chọn)
+          - [ ] Tính toán tổng tiền tự động dựa trên số ngày và giá xe/ngày
+          - [ ] Lịch sử đặt xe của Customer với Paging
+
+          ## Yêu cầu kỹ thuật
+          - Business logic kiểm tra xung đột lịch xe
+          - Data Annotation Validation cho booking form
+          - Paging cho danh sách booking
+
+          ## Tiêu chí hoàn thành
+          - Không thể đặt xe đã được đặt trong cùng khoảng thời gian
+          - Admin có thể quản lý toàn bộ bookings" 2>/dev/null || echo "Skipping"
+
+      - name: "[BE-06] Paging, Filtering & AJAX"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[BE-06] Paging, Filtering & AJAX" \
+            --label "backend" \
+            --body "## Mô tả
+          Triển khai phân trang, lọc dữ liệu và AJAX cho trải nghiệm mượt mà.
+
+          ## Công việc cần làm
+          - [ ] Server-side paging cho danh sách xe và danh sách booking
+          - [ ] Filtering: lọc xe theo loại, giá, hãng, tình trạng
+          - [ ] AJAX search: tìm kiếm xe không reload trang
+          - [ ] AJAX filtering: lọc và cập nhật danh sách xe qua AJAX
+          - [ ] AJAX paging: chuyển trang không reload (tùy chọn)
+          - [ ] AJAX kiểm tra xe còn trống khi chọn ngày đặt
+          - [ ] AJAX load thêm đánh giá/bình luận xe
+          - [ ] Hiệu ứng loading spinner khi AJAX đang xử lý
+
+          ## Yêu cầu kỹ thuật
+          - jQuery AJAX hoặc Fetch API
+          - Partial Views cho AJAX rendering
+          - JSON response từ Controller
+
+          ## Tiêu chí hoàn thành
+          - Tìm kiếm và lọc không reload trang
+          - Phân trang hoạt động đúng ở tất cả danh sách" 2>/dev/null || echo "Skipping"
+
+      - name: "[BE-07] RESTful Web API cho Xe & Đặt xe"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[BE-07] RESTful Web API cho Xe & Đặt xe" \
+            --label "backend" \
+            --body "## Mô tả
+          Xây dựng các RESTful API endpoint để hỗ trợ AJAX và tích hợp bên ngoài.
+
+          ## Công việc cần làm
+          - [ ] API VehiclesController:
+            - GET /api/vehicles - lấy danh sách xe (hỗ trợ query params: page, pageSize, category, minPrice, maxPrice)
+            - GET /api/vehicles/{id} - lấy chi tiết xe
+            - POST /api/vehicles - thêm xe mới (Admin only)
+            - PUT /api/vehicles/{id} - cập nhật xe (Admin only)
+            - DELETE /api/vehicles/{id} - xóa xe (Admin only)
+          - [ ] API BookingsController:
+            - GET /api/bookings - lấy danh sách đặt xe (Admin: all, Customer: của mình)
+            - GET /api/bookings/{id} - chi tiết đặt xe
+            - POST /api/bookings - tạo đặt xe mới
+            - PUT /api/bookings/{id}/cancel - hủy đặt xe
+          - [ ] API VehicleAvailability: GET /api/vehicles/{id}/availability?startDate=&endDate=
+          - [ ] Trả về HTTP status codes đúng chuẩn (200, 201, 400, 401, 403, 404)
+          - [ ] Xác thực API bằng JWT Token hoặc Cookie Authentication
+
+          ## Yêu cầu kỹ thuật
+          - ASP.NET Web API (ApiController)
+          - JSON serialization
+          - HTTP verbs: GET, POST, PUT, DELETE
+
+          ## Tiêu chí hoàn thành
+          - Tất cả endpoints trả về JSON đúng định dạng
+          - Có thể test bằng Postman hoặc Swagger" 2>/dev/null || echo "Skipping"
+
+      - name: "[BE-08] Upload ảnh xe"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[BE-08] Upload ảnh xe" \
+            --label "backend" \
+            --body "## Mô tả
+          Chức năng upload và quản lý ảnh cho xe.
+
+          ## Công việc cần làm
+          - [ ] Upload ảnh xe khi thêm/sửa thông tin xe (Admin)
+          - [ ] Validate file: chỉ chấp nhận jpg, png, webp; kích thước tối đa 5MB
+          - [ ] Lưu ảnh vào thư mục ~/Content/Images/Vehicles/
+          - [ ] Hiển thị preview ảnh trước khi upload
+          - [ ] Hỗ trợ upload nhiều ảnh cho một xe (gallery)
+          - [ ] Xóa ảnh cũ khi thay ảnh mới
+          - [ ] Upload ảnh đại diện (avatar) cho tài khoản Customer
+          - [ ] Resize ảnh tự động để tối ưu dung lượng (tùy chọn)
+
+          ## Yêu cầu kỹ thuật
+          - IFormFile / HttpPostedFileBase
+          - Validation file type và size
+          - Lưu file vào server
+
+          ## Tiêu chí hoàn thành
+          - Ảnh được upload và hiển thị đúng
+          - File không hợp lệ bị từ chối với thông báo lỗi rõ ràng" 2>/dev/null || echo "Skipping"
+
+      - name: "[BE-09] Validation & Data Annotation"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[BE-09] Validation & Data Annotation" \
+            --label "backend" \
+            --body "## Mô tả
+          Áp dụng kiểm soát dữ liệu toàn diện với Data Annotation và Fluent Validation.
+
+          ## Công việc cần làm
+          - [ ] Áp dụng Data Annotation cho tất cả ViewModel/Model:
+            - [Required], [StringLength], [Range], [EmailAddress], [Phone]
+            - [RegularExpression] cho biển số xe, mật khẩu
+            - [Compare] cho xác nhận mật khẩu
+            - [DataType] cho ngày tháng, tiền tệ
+          - [ ] Custom Validation Attribute cho:
+            - Ngày kết thúc phải sau ngày bắt đầu
+            - Tuổi người dùng (phải đủ 18 tuổi)
+          - [ ] Client-side validation tự động từ Data Annotation (jquery.validate)
+          - [ ] Server-side validation fallback
+          - [ ] Hiển thị thông báo lỗi validation rõ ràng bằng tiếng Việt
+          - [ ] ModelState validation trong Controller
+
+          ## Yêu cầu kỹ thuật
+          - System.ComponentModel.DataAnnotations
+          - jQuery Validation (client-side)
+          - Custom ValidationAttribute
+
+          ## Tiêu chí hoàn thành
+          - Không thể submit form với dữ liệu không hợp lệ
+          - Thông báo lỗi hiển thị đúng vị trí, đúng ngôn ngữ" 2>/dev/null || echo "Skipping"
+
+      - name: "[BE-10] Tích hợp Rich Text Editor (TinyMCE/CKEditor)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[BE-10] Tích hợp Rich Text Editor (TinyMCE/CKEditor)" \
+            --label "backend" \
+            --body "## Mô tả
+          Tích hợp editor WYSIWYG cho các trường textarea cần nội dung phong phú.
+
+          ## Công việc cần làm
+          - [ ] Tích hợp TinyMCE hoặc CKEditor 5 cho trường Mô tả xe (VehicleDescription)
+          - [ ] Tích hợp editor cho trường Điều khoản đặt xe / Chính sách
+          - [ ] Lưu và hiển thị nội dung HTML từ editor đúng cách
+          - [ ] Sanitize HTML output để tránh XSS
+          - [ ] Cấu hình toolbar phù hợp (bold, italic, list, image, link)
+          - [ ] Responsive editor trên mobile
+
+          ## Yêu cầu kỹ thuật
+          - TinyMCE 6 hoặc CKEditor 5
+          - HTML sanitization (AntiXSS library)
+          - @Html.Raw() cho việc render nội dung
+
+          ## Tiêu chí hoàn thành
+          - Editor hiển thị và lưu nội dung đúng định dạng
+          - Nội dung HTML được render đúng ở trang xem" 2>/dev/null || echo "Skipping"
+
+      - name: "[BE-11] Bảo mật ứng dụng (Security)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[BE-11] Bảo mật ứng dụng (Security)" \
+            --label "backend,security" \
+            --body "## Mô tả
+          Triển khai các biện pháp bảo mật cơ bản cho ứng dụng web.
+
+          ## Công việc cần làm
+          - [ ] **Chống CSRF**: Sử dụng @Html.AntiForgeryToken() và [ValidateAntiForgeryToken]
+          - [ ] **Chống XSS**: Encode output với @Html.Encode(), sanitize HTML từ editor
+          - [ ] **Chống SQL Injection**: Sử dụng Entity Framework parameterized queries (không raw SQL)
+          - [ ] **Bảo mật mật khẩu**: Hash mật khẩu với BCrypt hoặc ASP.NET Identity PasswordHasher
+          - [ ] **HTTPS**: Cấu hình HTTPS redirect
+          - [ ] **Bảo mật Cookie**: HttpOnly, Secure, SameSite flags
+          - [ ] **Authorization**: Kiểm tra quyền truy cập đúng cho mỗi action
+          - [ ] **Rate Limiting**: Giới hạn số lần đăng nhập sai (chống brute force)
+          - [ ] **Input Validation**: Validate tất cả input từ người dùng server-side
+
+          ## Yêu cầu kỹ thuật
+          - Anti-forgery tokens
+          - BCrypt.Net hoặc Identity PasswordHasher
+          - Content Security Policy headers (tùy chọn)
+
+          ## Tiêu chí hoàn thành
+          - Vượt qua OWASP Top 10 basic checks
+          - Không có lỗ hổng XSS, CSRF, SQL Injection cơ bản" 2>/dev/null || echo "Skipping"
+
+      - name: "[BE-12] Kiểm thử (Unit Test & Integration Test)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[BE-12] Kiểm thử (Unit Test & Integration Test)" \
+            --label "backend,testing" \
+            --body "## Mô tả
+          Viết test kiểm thử các chức năng nghiệp vụ quan trọng.
+
+          ## Công việc cần làm
+          - [ ] Thiết lập project test (MSTest hoặc xUnit hoặc NUnit)
+          - [ ] Unit test cho Service/Business Logic:
+            - Tính toán tổng tiền booking
+            - Kiểm tra xe có trống không trong khoảng thời gian
+            - Validation logic tùy chỉnh
+          - [ ] Unit test cho Controller:
+            - VehicleController (Index, Create, Edit, Delete)
+            - BookingController (Create booking, Cancel booking)
+            - AccountController (Login, Register)
+          - [ ] Test Repository/Data Access layer (với In-Memory Database)
+          - [ ] Test API endpoints (trả về đúng status code và data)
+          - [ ] Integration test cho user flow: đăng nhập → tìm xe → đặt xe
+          - [ ] Code coverage tối thiểu 60%
+
+          ## Yêu cầu kỹ thuật
+          - xUnit hoặc MSTest
+          - Moq cho mocking
+          - Entity Framework In-Memory Provider
+
+          ## Tiêu chí hoàn thành
+          - Tất cả tests pass
+          - Coverage report được tạo" 2>/dev/null || echo "Skipping"
+
+  create-frontend-issues:
+    name: Tạo Issues Frontend
+    runs-on: ubuntu-latest
+    needs: [create-labels, create-backend-issues]
+    steps:
+      - name: "[FE-01] Layout & Navigation với Bootstrap"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[FE-01] Layout & Navigation với Bootstrap" \
+            --label "frontend" \
+            --body "## Mô tả
+          Xây dựng layout tổng thể và navigation responsive bằng Bootstrap 5.
+
+          ## Công việc cần làm
+          - [ ] Cài đặt Bootstrap 5 và jQuery
+          - [ ] Tạo _Layout.cshtml chung với header, footer, sidebar
+          - [ ] Navigation bar responsive với hamburger menu trên mobile
+          - [ ] Layout riêng cho Admin (\`_AdminLayout.cshtml\`) với sidebar menu
+          - [ ] Layout cho Customer (header với avatar, notifications, giỏ đặt xe)
+          - [ ] Breadcrumb navigation
+          - [ ] Footer với thông tin liên hệ và links
+          - [ ] Loading spinner/overlay global
+          - [ ] Toast notifications (success, error, warning)
+
+          ## Yêu cầu kỹ thuật
+          - Bootstrap 5
+          - jQuery 3.x
+          - Font Awesome icons (tùy chọn)
+
+          ## Tiêu chí hoàn thành
+          - Layout đồng nhất trên tất cả trang
+          - Navigation hoạt động đúng trên desktop và mobile" 2>/dev/null || echo "Skipping"
+
+      - name: "[FE-02] Trang Customer - Danh sách & Tìm kiếm xe"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[FE-02] Trang Customer - Danh sách & Tìm kiếm xe" \
+            --label "frontend" \
+            --body "## Mô tả
+          Xây dựng trang tìm kiếm và duyệt xe cho khách hàng.
+
+          ## Công việc cần làm
+          - [ ] Trang chủ (Home): Banner, xe nổi bật, danh mục xe
+          - [ ] Trang danh sách xe (Vehicle Listing):
+            - Grid/List view toggle
+            - Card xe: ảnh, tên, giá/ngày, loại xe, rating
+            - Phân trang
+          - [ ] Sidebar lọc xe:
+            - Lọc theo loại xe (Sedan, SUV, Truck,...)
+            - Lọc theo giá (range slider)
+            - Lọc theo hãng xe
+            - Lọc theo số chỗ
+          - [ ] Search bar với autocomplete (AJAX)
+          - [ ] Sort: giá tăng/giảm, mới nhất, phổ biến nhất
+          - [ ] Trang chi tiết xe: gallery ảnh, mô tả, thông số kỹ thuật, calendar trống/bận
+
+          ## Yêu cầu kỹ thuật
+          - Bootstrap 5 Cards, Grid
+          - jQuery AJAX
+          - noUiSlider cho price range filter (tùy chọn)
+
+          ## Tiêu chí hoàn thành
+          - Tìm kiếm và lọc hoạt động mượt mà không reload trang
+          - Hiển thị đúng trên mobile và desktop" 2>/dev/null || echo "Skipping"
+
+      - name: "[FE-03] Trang Customer - Đặt xe & Lịch sử đặt xe"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[FE-03] Trang Customer - Đặt xe & Lịch sử đặt xe" \
+            --label "frontend" \
+            --body "## Mô tả
+          Xây dựng giao diện đặt xe và xem lịch sử đặt xe cho khách hàng.
+
+          ## Công việc cần làm
+          - [ ] Form đặt xe:
+            - Date picker chọn ngày nhận/trả xe
+            - Hiển thị giá ước tính tự động (AJAX)
+            - Thông tin người đặt (tự động điền từ profile)
+            - Ghi chú đặc biệt
+            - Xác nhận đặt xe
+          - [ ] Trang xác nhận đặt xe thành công
+          - [ ] Trang lịch sử đặt xe:
+            - Danh sách booking với status (Pending, Confirmed, Completed, Cancelled)
+            - Badge màu sắc theo status
+            - Nút hủy booking (nếu còn trong thời hạn)
+            - Phân trang
+          - [ ] Trang chi tiết booking
+          - [ ] Trang Profile: cập nhật thông tin, đổi mật khẩu, upload avatar
+
+          ## Yêu cầu kỹ thuật
+          - Flatpickr hoặc Bootstrap Datepicker
+          - AJAX tính giá realtime
+
+          ## Tiêu chí hoàn thành
+          - Quy trình đặt xe hoàn chỉnh từ đầu đến cuối
+          - Lịch sử đặt xe hiển thị đúng và đầy đủ" 2>/dev/null || echo "Skipping"
+
+      - name: "[FE-04] Admin Dashboard & Thống kê"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[FE-04] Admin Dashboard & Thống kê" \
+            --label "frontend" \
+            --body "## Mô tả
+          Xây dựng dashboard quản trị với thống kê và biểu đồ.
+
+          ## Công việc cần làm
+          - [ ] Dashboard overview: tổng số xe, booking hôm nay, doanh thu tháng, khách hàng mới
+          - [ ] Widget cards với số liệu key metrics
+          - [ ] Biểu đồ doanh thu theo tháng (Chart.js hoặc ApexCharts)
+          - [ ] Biểu đồ booking theo loại xe (pie chart)
+          - [ ] Danh sách booking gần đây cần xử lý
+          - [ ] Danh sách xe cần bảo dưỡng (tùy chọn)
+          - [ ] Quick actions: xem tất cả booking, thêm xe mới
+          - [ ] Sidebar menu với các mục: Dashboard, Xe, Đặt xe, Khách hàng, Báo cáo
+
+          ## Yêu cầu kỹ thuật
+          - Bootstrap 5 Cards và Grid
+          - Chart.js
+          - AdminLTE template (tùy chọn) hoặc tự xây dựng
+
+          ## Tiêu chí hoàn thành
+          - Dashboard load nhanh, thống kê đúng
+          - Biểu đồ hiển thị dữ liệu thực" 2>/dev/null || echo "Skipping"
+
+      - name: "[FE-05] Admin - Quản lý Xe (CRUD UI)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[FE-05] Admin - Quản lý Xe (CRUD UI)" \
+            --label "frontend" \
+            --body "## Mô tả
+          Giao diện quản lý xe đầy đủ cho Admin.
+
+          ## Công việc cần làm
+          - [ ] Bảng danh sách xe: DataTable với sort, filter, search, paging
+          - [ ] Modal hoặc trang thêm xe mới:
+            - Form với tất cả fields (tên, hãng, loại, giá, số chỗ, mô tả, ảnh)
+            - Rich text editor cho mô tả
+            - Upload nhiều ảnh với preview
+          - [ ] Modal hoặc trang sửa xe
+          - [ ] Xác nhận xóa xe bằng modal dialog
+          - [ ] Badge trạng thái xe (Sẵn sàng, Đang thuê, Bảo dưỡng)
+          - [ ] Bulk actions: xóa nhiều xe cùng lúc (tùy chọn)
+          - [ ] Export danh sách xe ra Excel/PDF (tùy chọn)
+
+          ## Yêu cầu kỹ thuật
+          - DataTables.js hoặc Bootstrap Table
+          - Dropzone.js hoặc tự xây dựng image upload
+          - Bootstrap Modal
+
+          ## Tiêu chí hoàn thành
+          - CRUD hoạt động đúng với UX tốt
+          - Validation hiển thị inline, không mất data khi lỗi" 2>/dev/null || echo "Skipping"
+
+      - name: "[FE-06] Admin - Quản lý Đặt xe (CRUD UI)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[FE-06] Admin - Quản lý Đặt xe (CRUD UI)" \
+            --label "frontend" \
+            --body "## Mô tả
+          Giao diện quản lý đặt xe cho Admin.
+
+          ## Công việc cần làm
+          - [ ] Bảng danh sách tất cả booking với filter theo status, ngày, xe
+          - [ ] AJAX filter không reload trang
+          - [ ] Modal chi tiết booking: thông tin đầy đủ, lịch sử thay đổi status
+          - [ ] Action buttons: Xác nhận / Từ chối / Hủy booking
+          - [ ] Xác nhận action bằng modal dialog
+          - [ ] Calendar view: hiển thị booking theo lịch (tùy chọn)
+          - [ ] Tìm kiếm booking theo tên khách hàng, biển số xe, ngày
+
+          ## Yêu cầu kỹ thuật
+          - DataTables.js với server-side processing
+          - Bootstrap Modal
+          - jQuery AJAX
+
+          ## Tiêu chí hoàn thành
+          - Admin xử lý booking nhanh chóng với UX rõ ràng" 2>/dev/null || echo "Skipping"
+
+      - name: "[FE-07] Responsive Design & Cross-browser Testing"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[FE-07] Responsive Design & Cross-browser Testing" \
+            --label "frontend" \
+            --body "## Mô tả
+          Đảm bảo ứng dụng responsive trên mọi thiết bị và trình duyệt.
+
+          ## Công việc cần làm
+          - [ ] Test và fix responsive trên:
+            - Mobile (320px - 768px): iPhone SE, iPhone 14, Samsung Galaxy
+            - Tablet (768px - 1024px): iPad
+            - Desktop (1024px+): HD và Full HD
+          - [ ] Đảm bảo navigation, tables, forms đều hiển thị đúng trên mobile
+          - [ ] Images responsive (img-fluid, object-fit)
+          - [ ] Tables responsive (table-responsive wrapper)
+          - [ ] Modal và forms responsive
+          - [ ] Test trên Chrome, Firefox, Edge
+          - [ ] Touch-friendly buttons và links (tối thiểu 44px touch target)
+          - [ ] Kiểm tra tốc độ load (Google PageSpeed tùy chọn)
+
+          ## Yêu cầu kỹ thuật
+          - Bootstrap 5 breakpoints
+          - CSS Media queries bổ sung nếu cần
+          - Chrome DevTools device emulation
+
+          ## Tiêu chí hoàn thành
+          - Không có layout broken trên mobile và tablet
+          - Trải nghiệm người dùng tốt trên mọi kích thước màn hình" 2>/dev/null || echo "Skipping"
+
+      - name: "[FE-08] Quốc tế hóa (i18n) & UX Improvements"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[FE-08] Quốc tế hóa (i18n) & UX Improvements" \
+            --label "frontend" \
+            --body "## Mô tả
+          Hỗ trợ đa ngôn ngữ (Tiếng Việt / Tiếng Anh) và cải thiện UX tổng thể.
+
+          ## Công việc cần làm
+          - [ ] Cài đặt Resource files (.resx) cho i18n:
+            - Resources.vi.resx (Tiếng Việt - mặc định)
+            - Resources.en.resx (Tiếng Anh)
+          - [ ] Language switcher (dropdown chọn ngôn ngữ)
+          - [ ] Lưu lựa chọn ngôn ngữ vào Cookie
+          - [ ] Localize: validation messages, UI labels, date/time format, currency format
+          - [ ] Format ngày tháng theo locale (dd/MM/yyyy cho Việt Nam)
+          - [ ] Format tiền tệ (VND và USD)
+          - [ ] UX improvements:
+            - Skeleton loading thay vì spinner (tùy chọn)
+            - Infinite scroll hoặc Load More (tùy chọn)
+            - Scroll to top button
+            - Empty state illustrations khi không có dữ liệu
+
+          ## Yêu cầu kỹ thuật
+          - ASP.NET Resource Manager
+          - CultureInfo configuration
+          - Cookie-based language preference
+
+          ## Tiêu chí hoàn thành
+          - Chuyển đổi ngôn ngữ hoạt động đúng
+          - Tất cả text hiển thị đúng theo ngôn ngữ được chọn" 2>/dev/null || echo "Skipping"
