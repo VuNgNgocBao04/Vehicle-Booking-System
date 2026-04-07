@@ -2,6 +2,11 @@ name: Tạo GitHub Issues cho dự án
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - copilot/create-user-roles-and-access-control
+    paths:
+      - '.github/workflows/create-issues.yml'
 
 permissions:
   issues: write
