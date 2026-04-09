@@ -7,30 +7,36 @@ namespace VehicleBookingSystem.Data;
 public static class DbSeeder
 {
     private const string AdminEmail = "admin@vehiclebooking.local";
-    private const string AdminPassword = "Admin123!";
 
-    public static async Task SeedAsync(IServiceProvider services)
+    public static async Task SeedAsync(IServiceProvider services, IConfiguration configuration)
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
         var userManager = services.GetRequiredService<UserManager<AppUser>>();
         var roleManager = services.GetRequiredService<RoleManager<AppRole>>();
+        var adminPassword = configuration["SeedData:AdminPassword"];
+        var adminEmail = configuration["SeedData:AdminEmail"] ?? AdminEmail;
 
         var adminRole = await EnsureRoleAsync(roleManager, "Admin", "Administrator role");
         var customerRole = await EnsureRoleAsync(roleManager, "Customer", "Customer role");
 
-        var adminUser = await userManager.Users.FirstOrDefaultAsync(user => user.Email == AdminEmail);
+        var adminUser = await userManager.Users.FirstOrDefaultAsync(user => user.Email == adminEmail);
         if (adminUser is null)
         {
+            if (string.IsNullOrWhiteSpace(adminPassword))
+            {
+                throw new InvalidOperationException("SeedData:AdminPassword must be configured when startup seeding is enabled.");
+            }
+
             adminUser = new AppUser
             {
                 Id = Guid.NewGuid(),
-                UserName = AdminEmail,
-                Email = AdminEmail,
+                UserName = adminEmail,
+                Email = adminEmail,
                 FullName = "System Administrator",
                 EmailConfirmed = true
             };
 
-            var createResult = await userManager.CreateAsync(adminUser, AdminPassword);
+            var createResult = await userManager.CreateAsync(adminUser, adminPassword);
             if (!createResult.Succeeded)
             {
                 var messages = string.Join(", ", createResult.Errors.Select(error => error.Description));

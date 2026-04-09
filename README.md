@@ -5,6 +5,7 @@ Hệ thống Quản lý và Đặt xe trực tuyến (Vehicle Booking Management
 ## Kiến trúc
 
 Project được dựng bằng ASP.NET Core MVC + Entity Framework Core Code First + SQL Server. `Users` và `Roles` dùng ASP.NET Core Identity, còn `Vehicles`, `Bookings`, `Payments` và `VehicleCategories` là các bảng nghiệp vụ. Cấu hình hiện tại trỏ vào SQL Server Express theo datasource bạn cung cấp và database `QuanLyDatXeNew`.
+Trong môi trường production, migrate/seed khi khởi động đã được tách thành cấu hình riêng, mặc định tắt.
 
 ## ERD
 
@@ -67,19 +68,16 @@ erDiagram
 
 ```bash
 dotnet restore
-dotnet ef migrations add InitialCreate
 dotnet ef database update
 dotnet run --project VehicleBookingSystem
 ```
 
-Connection string:
-
-`Data Source=DESKTOP-4E5I8PE\SQLEXPRESS;Initial Catalog=QuanLyDatXeNew;Integrated Security=True;Connect Timeout=30;Encrypt=True;Trust Server Certificate=True;Application Intent=ReadWrite;Multi Subnet Failover=False`
+Connection string cho môi trường development nằm trong `VehicleBookingSystem/appsettings.Development.json`. Nếu triển khai production, hãy đặt `ConnectionStrings__DefaultConnection` và giữ `StartupOptions:ApplyMigrationsOnStartup`/`StartupOptions:SeedOnStartup` ở `false`.
 
 ## Seed dữ liệu mẫu
 
 - Tài khoản admin: `admin@vehiclebooking.local`
-- Mật khẩu admin: `Admin123!`
+- Mật khẩu admin: cấu hình trong `VehicleBookingSystem/appsettings.Development.json`
 - Role: `Admin`, `Customer`
 - Danh mục xe: `Sedan`, `SUV`, `MPV`, `Hatchback`
 - Xe mẫu đã được tạo sẵn khi ứng dụng khởi động lần đầu

@@ -1,8 +1,70 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Home";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<section class="hero-panel">
+    <div class="row align-items-center g-4">
+        <div class="col-lg-7">
+            <span class="eyebrow">User template</span>
+            <h1 class="display-5 fw-bold mt-3">Book a vehicle with a calmer, faster front-end.</h1>
+            <p class="lead text-muted mt-3 mb-4">
+                The user site is intentionally lighter than the admin dashboard. It keeps the booking flow focused on search, availability, and quick actions.
+            </p>
+            <div class="d-flex flex-wrap gap-3">
+                <a class="btn btn-primary btn-lg px-4" href="#booking">Start booking</a>
+                <a class="btn btn-outline-secondary btn-lg px-4" asp-area="" asp-controller="Home" asp-action="Privacy">Learn more</a>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="booking-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <div class="text-uppercase small text-white-50">Next trip</div>
+                        <div class="h4 mb-0">Airport pickup</div>
+                    </div>
+                    <span class="status-pill">Live</span>
+                </div>
+                <div class="booking-list">
+                    <div class="booking-row">
+                        <span>From</span>
+                        <strong>District 1</strong>
+                    </div>
+                    <div class="booking-row">
+                        <span>To</span>
+                        <strong>Tan Son Nhat</strong>
+                    </div>
+                    <div class="booking-row">
+                        <span>Vehicle</span>
+                        <strong>Premium sedan</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="feature-grid mt-4">
+    <article class="feature-card">
+        <span class="feature-kicker">01</span>
+        <h2>Fast search</h2>
+        <p>Find vehicles and booking windows without visual clutter.</p>
+    </article>
+    <article class="feature-card">
+        <span class="feature-kicker">02</span>
+        <h2>Clear status</h2>
+        <p>Track pending, confirmed, and paid bookings from the same shell.</p>
+    </article>
+    <article class="feature-card">
+        <span class="feature-kicker">03</span>
+        <h2>Clean handoff</h2>
+        <p>Send admin operations to the separate dashboard layout when needed.</p>
+    </article>
+</section>
+
+<section id="booking" class="action-strip mt-4">
+    <div>
+        <h2 class="h4 mb-2">Ready to reserve your next ride?</h2>
+        <p class="mb-0 text-white-50">The user template stays simple so booking stays the primary action.</p>
+    </div>
+    <a class="btn btn-light btn-lg" href="mailto:support@vehiclebookingsystem.local">Contact support</a>
+</section>

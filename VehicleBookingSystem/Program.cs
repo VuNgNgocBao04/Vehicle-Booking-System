@@ -29,14 +29,26 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Account/AccessDenied";
 });
 
+var applyMigrationsOnStartup = builder.Configuration.GetValue<bool>("StartupOptions:ApplyMigrationsOnStartup");
+var seedOnStartup = builder.Configuration.GetValue<bool>("StartupOptions:SeedOnStartup");
+
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+if (applyMigrationsOnStartup || seedOnStartup)
 {
+    using var scope = app.Services.CreateScope();
     var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<ApplicationDbContext>();
-    await context.Database.MigrateAsync();
-    await DbSeeder.SeedAsync(services);
+
+    if (applyMigrationsOnStartup)
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        await context.Database.MigrateAsync();
+    }
+
+    if (seedOnStartup)
+    {
+        await DbSeeder.SeedAsync(services, builder.Configuration);
+    }
 }
 
 if (!app.Environment.IsDevelopment())
@@ -52,6 +64,10 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "areas",
+    pattern: "{area:exists}/{controller=Dashboard}/{action=Index}/{id?}");
 
 app.MapControllerRoute(
     name: "default",
