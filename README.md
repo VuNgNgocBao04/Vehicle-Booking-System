@@ -11,57 +11,57 @@ Trong môi trường production, migrate/seed khi khởi động đã được t
 
 ```mermaid
 erDiagram
-	APPUSER ||--o{ BOOKING : makes
-	VEHICLECATEGORY ||--o{ VEHICLE : contains
-	VEHICLE ||--o{ BOOKING : booked_for
-	BOOKING ||--o| PAYMENT : has
+  APPUSER ||--o{ BOOKING : makes
+  VEHICLECATEGORY ||--o{ VEHICLE : contains
+  VEHICLE ||--o{ BOOKING : booked_for
+  BOOKING ||--o| PAYMENT : has
 
-	APPUSER {
-		guid Id PK
-		string UserName
-		string Email
-		string FullName
-	}
+  APPUSER {
+    guid Id PK
+    string UserName
+    string Email
+    string FullName
+  }
 
-	APPROLE {
-		guid Id PK
-		string Name
-		string Description
-	}
+  APPROLE {
+    guid Id PK
+    string Name
+    string Description
+  }
 
-	VEHICLECATEGORY {
-		guid Id PK
-		string Name
-		string Description
-	}
+  VEHICLECATEGORY {
+    guid Id PK
+    string Name
+    string Description
+  }
 
-	VEHICLE {
-		guid Id PK
-		guid VehicleCategoryId FK
-		string Code
-		string Brand
-		string Model
-		string LicensePlate
-		decimal DailyRate
-		int Status
-	}
+  VEHICLE {
+    guid Id PK
+    guid VehicleCategoryId FK
+    string Code
+    string Brand
+    string Model
+    string LicensePlate
+    decimal DailyRate
+    int Status
+  }
 
-	BOOKING {
-		guid Id PK
-		guid UserId FK
-		guid VehicleId FK
-		string BookingCode
-		decimal TotalAmount
-		int Status
-	}
+  BOOKING {
+    guid Id PK
+    guid UserId FK
+    guid VehicleId FK
+    string BookingCode
+    decimal TotalAmount
+    int Status
+  }
 
-	PAYMENT {
-		guid Id PK
-		guid BookingId FK
-		decimal PaidAmount
-		int PaymentMethod
-		int Status
-	}
+  PAYMENT {
+    guid Id PK
+    guid BookingId FK
+    decimal PaidAmount
+    int PaymentMethod
+    int Status
+  }
 ```
 
 ## Chạy ứng dụng
@@ -77,7 +77,8 @@ Connection string cho môi trường development nằm trong `VehicleBookingSyst
 ## Seed dữ liệu mẫu
 
 - Tài khoản admin: `admin@vehiclebooking.local`
-- Mật khẩu admin: cấu hình trong `VehicleBookingSystem/appsettings.Development.json`
+- Mật khẩu admin: cấu hình bằng `dotnet user-secrets` khi bật `StartupOptions:SeedOnStartup`
+- Ví dụ: `dotnet user-secrets set "SeedData:AdminPassword" "<your-secure-password>" --project VehicleBookingSystem`
 - Role: `Admin`, `Customer`
 - Danh mục xe: `Sedan`, `SUV`, `MPV`, `Hatchback`
 - Xe mẫu đã được tạo sẵn khi ứng dụng khởi động lần đầu
