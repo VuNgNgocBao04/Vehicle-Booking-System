@@ -79,7 +79,7 @@ Connection string cho môi trường development nằm trong `VehicleBookingSyst
 - Tài khoản admin: `admin@vehiclebooking.local`
 - Mật khẩu admin: đặt qua .NET User Secrets (không commit vào source control):
   ```bash
-  dotnet user-secrets set "SeedData:AdminPassword" "YourStrongPassword!" --project VehicleBookingSystem
+  dotnet user-secrets set "SeedData:AdminPassword" "<your-secure-password>" --project VehicleBookingSystem
   ```
 - Role: `Admin`, `Customer`
 - Danh mục xe: `Sedan`, `SUV`, `MPV`, `Hatchback`
