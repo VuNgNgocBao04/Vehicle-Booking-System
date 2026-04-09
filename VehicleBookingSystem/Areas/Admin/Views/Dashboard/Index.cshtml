@@ -1,0 +1,138 @@
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<section id="overview" class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="metric-card">
+            <div class="text-white-50 text-uppercase small">Active bookings</div>
+            <div class="metric-value mt-2">128</div>
+            <div class="text-white-50 mt-2">Requests waiting on approval</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="metric-card">
+            <div class="text-white-50 text-uppercase small">Available vehicles</div>
+            <div class="metric-value mt-2">42</div>
+            <div class="text-white-50 mt-2">Ready for immediate dispatch</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="metric-card">
+            <div class="text-white-50 text-uppercase small">Revenue today</div>
+            <div class="metric-value mt-2">18.4M</div>
+            <div class="text-white-50 mt-2">Tracked from completed payments</div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-4 mb-4">
+    <div class="col-lg-8" id="bookings">
+        <div class="admin-card p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <div class="text-uppercase small text-white-50">Bookings</div>
+                    <h2 class="h4 mb-0">Recent activity</h2>
+                </div>
+                <span class="badge rounded-pill text-bg-warning">Needs review</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-admin align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Customer</th>
+                            <th>Vehicle</th>
+                            <th>Status</th>
+                            <th class="text-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>BK-24091</td>
+                            <td>Nguyen Anh</td>
+                            <td>VinFast VF 8</td>
+                            <td><span class="badge text-bg-success">Confirmed</span></td>
+                            <td class="text-end">2,100,000</td>
+                        </tr>
+                        <tr>
+                            <td>BK-24092</td>
+                            <td>Tran Mai</td>
+                            <td>Toyota Innova</td>
+                            <td><span class="badge text-bg-warning">Pending</span></td>
+                            <td class="text-end">1,450,000</td>
+                        </tr>
+                        <tr>
+                            <td>BK-24093</td>
+                            <td>Le Hoang</td>
+                            <td>Hyundai Accent</td>
+                            <td><span class="badge text-bg-info">Paid</span></td>
+                            <td class="text-end">960,000</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4" id="fleet">
+        <div class="admin-card p-4 h-100">
+            <div class="text-uppercase small text-white-50">Fleet</div>
+            <h2 class="h4">Quick controls</h2>
+            <div class="d-grid gap-3 mt-4">
+                <div class="admin-shell-card p-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Maintenance queue</span>
+                        <strong>7</strong>
+                    </div>
+                </div>
+                <div class="admin-shell-card p-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Vehicles online</span>
+                        <strong>35</strong>
+                    </div>
+                </div>
+                <div class="admin-shell-card p-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Pending payments</span>
+                        <strong>11</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-4" id="users">
+    <div class="col-lg-6">
+        <div class="admin-card p-4 h-100">
+            <div class="text-uppercase small text-white-50">Users</div>
+            <h2 class="h4">Support queue</h2>
+            <p class="text-white-50 mb-4">Keep the admin side focused on operations and handoff while the user template stays lean.</p>
+            <ul class="list-unstyled mb-0">
+                <li class="d-flex justify-content-between py-2 border-bottom border-light border-opacity-10">
+                    <span>New registrations</span>
+                    <strong>14</strong>
+                </li>
+                <li class="d-flex justify-content-between py-2 border-bottom border-light border-opacity-10">
+                    <span>Open support tickets</span>
+                    <strong>6</strong>
+                </li>
+                <li class="d-flex justify-content-between py-2">
+                    <span>Role changes this week</span>
+                    <strong>3</strong>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="admin-card p-4 h-100">
+            <div class="text-uppercase small text-white-50">Summary</div>
+            <h2 class="h4">What this shell keeps</h2>
+            <p class="text-white-50 mb-0">
+                A separate route, separate layout, and a smaller asset surface. That keeps the repo manageable while preserving distinct admin and user experiences.
+            </p>
+        </div>
+    </div>
+</section>
