@@ -77,8 +77,12 @@ Connection string cho môi trường development nằm trong `VehicleBookingSyst
 ## Seed dữ liệu mẫu
 
 - Tài khoản admin: `admin@vehiclebooking.local`
-- Mật khẩu admin: cấu hình bằng `dotnet user-secrets` khi bật `StartupOptions:SeedOnStartup`
-- Ví dụ: `dotnet user-secrets set "SeedData:AdminPassword" "<your-secure-password>" --project VehicleBookingSystem`
+- Mật khẩu admin: đặt qua .NET User Secrets (không commit vào source control) khi bật `StartupOptions:SeedOnStartup`
+
+  ```bash
+  dotnet user-secrets set "SeedData:AdminPassword" "<your-secure-password>" --project VehicleBookingSystem
+  ```
+
 - Role: `Admin`, `Customer`
 - Danh mục xe: `Sedan`, `SUV`, `MPV`, `Hatchback`
 - Xe mẫu đã được tạo sẵn khi ứng dụng khởi động lần đầu
