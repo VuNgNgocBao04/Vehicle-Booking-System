@@ -73,6 +73,7 @@ dotnet run --project VehicleBookingSystem
 ```
 
 Connection string cho môi trường development nằm trong `VehicleBookingSystem/appsettings.Development.json`. Nếu triển khai production, hãy đặt `ConnectionStrings__DefaultConnection` và giữ `StartupOptions:ApplyMigrationsOnStartup`/`StartupOptions:SeedOnStartup` ở `false`.
+Trong môi trường development, hai cờ này cũng đang tắt để app khởi động ổn định khi test trên browser; nếu cần seed dữ liệu, hãy bật lại thủ công và đặt `SeedData:AdminPassword` bằng user-secrets.
 
 ## Seed dữ liệu mẫu
 
