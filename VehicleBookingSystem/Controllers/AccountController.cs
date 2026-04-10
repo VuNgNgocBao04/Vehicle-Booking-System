@@ -57,7 +57,7 @@ public class AccountController : Controller
             UserName = model.Email,
             Email = model.Email,
             FullName = model.FullName,
-            EmailConfirmed = true
+            EmailConfirmed = false
         };
 
         var createResult = await _userManager.CreateAsync(user, model.Password);
@@ -71,7 +71,6 @@ public class AccountController : Controller
             return View(model);
         }
 
-        await EnsureRoleExistsAsync("Customer", "Customer role");
         await _userManager.AddToRoleAsync(user, "Customer");
         await _signInManager.SignInAsync(user, isPersistent: false);
 
@@ -107,7 +106,7 @@ public class AccountController : Controller
             return View(model);
         }
 
-        var result = await _signInManager.PasswordSignInAsync(user.UserName!, model.Password, model.RememberMe, lockoutOnFailure: false);
+        var result = await _signInManager.PasswordSignInAsync(user.Email, model.Password, model.RememberMe, lockoutOnFailure: true);
         if (!result.Succeeded)
         {
             ModelState.AddModelError(string.Empty, "Invalid email or password.");
@@ -141,28 +140,5 @@ public class AccountController : Controller
     public IActionResult AccessDenied()
     {
         return View();
-    }
-
-    private async Task EnsureRoleExistsAsync(string roleName, string description)
-    {
-        if (await _roleManager.RoleExistsAsync(roleName))
-        {
-            return;
-        }
-
-        var role = new AppRole
-        {
-            Id = Guid.NewGuid(),
-            Name = roleName,
-            NormalizedName = roleName.ToUpperInvariant(),
-            Description = description
-        };
-
-        var result = await _roleManager.CreateAsync(role);
-        if (!result.Succeeded)
-        {
-            var messages = string.Join(", ", result.Errors.Select(error => error.Description));
-            throw new InvalidOperationException($"Unable to create role '{roleName}': {messages}");
-        }
     }
 }
