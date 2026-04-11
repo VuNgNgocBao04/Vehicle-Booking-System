@@ -99,14 +99,23 @@ public class BookingController : Controller
         if (hasConflict)
         {
             await transaction.RollbackAsync();
-            TempData["Error"] = "Cannot approve booking because the vehicle is already booked in the selected period.";
+            TempData["Error"] = "Cannot approve booking because another pending/confirmed booking already overlaps this period. Please reject or cancel the conflicting booking first.";
             return RedirectToAction(nameof(Index));
         }
 
         booking.Status = BookingStatus.Confirmed;
 
-        await _context.SaveChangesAsync();
-        await transaction.CommitAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            await transaction.RollbackAsync();
+            TempData["Error"] = "Booking was updated by another request. Please refresh and try again.";
+            return RedirectToAction(nameof(Index));
+        }
 
         TempData["Message"] = "Booking approved.";
         return RedirectToAction(nameof(Index));
@@ -128,20 +137,36 @@ public class BookingController : Controller
 
     private async Task<IActionResult> UpdateStatusAsync(Guid id, BookingStatus newStatus, string message, params BookingStatus[] allowedFromStatuses)
     {
-        var booking = await _context.Bookings.FindAsync(id);
+        await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+        var booking = await _context.Bookings.FirstOrDefaultAsync(item => item.Id == id);
         if (booking is null)
         {
+            await transaction.RollbackAsync();
             return NotFound();
         }
 
         if (allowedFromStatuses.Length > 0 && !allowedFromStatuses.Contains(booking.Status))
         {
+            await transaction.RollbackAsync();
             TempData["Error"] = $"Cannot change booking status from {booking.Status}.";
             return RedirectToAction(nameof(Index));
         }
 
         booking.Status = newStatus;
-        await _context.SaveChangesAsync();
+
+        try
+        {
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            await transaction.RollbackAsync();
+            TempData["Error"] = "Booking was updated by another request. Please refresh and try again.";
+            return RedirectToAction(nameof(Index));
+        }
+
         TempData["Message"] = message;
         return RedirectToAction(nameof(Index));
     }

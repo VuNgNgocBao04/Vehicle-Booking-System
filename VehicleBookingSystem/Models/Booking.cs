@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace VehicleBookingSystem.Models;
 
 public class Booking
@@ -15,6 +17,8 @@ public class Booking
     public decimal TotalAmount { get; set; }
     public BookingStatus Status { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    [Timestamp]
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
     public Payment? Payment { get; set; }
 }
 

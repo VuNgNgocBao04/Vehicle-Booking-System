@@ -239,7 +239,16 @@ public class BookingController : Controller
         }
 
         booking.Status = BookingStatus.Cancelled;
-        await _context.SaveChangesAsync();
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            TempData["Error"] = "Booking was updated by another request. Please refresh and try again.";
+            return RedirectToAction(nameof(MyBookings));
+        }
 
         TempData["Message"] = "Booking cancelled successfully.";
         return RedirectToAction(nameof(MyBookings));
