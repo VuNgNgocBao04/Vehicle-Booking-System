@@ -1,0 +1,15 @@
+@model IEnumerable<string>
+
+<ul class="list-group list-group-flush">
+    @if (!Model.Any())
+    {
+        <li class="list-group-item px-0 text-muted">Comments are not available yet.</li>
+    }
+    else
+    {
+        @foreach (var comment in Model)
+        {
+            <li class="list-group-item px-0">@comment</li>
+        }
+    }
+</ul>

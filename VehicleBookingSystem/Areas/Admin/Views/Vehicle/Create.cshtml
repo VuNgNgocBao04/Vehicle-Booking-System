@@ -1,0 +1,21 @@
+@model VehicleBookingSystem.ViewModels.VehicleFormViewModel
+
+@{
+    ViewData["Title"] = "Create Vehicle";
+}
+
+<h1 class="h4 mb-3">Create Vehicle</h1>
+
+<form asp-action="Create" method="post">
+    @Html.AntiForgeryToken()
+    <partial name="_Form" model="Model" />
+
+    <div class="mt-3 d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Save</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

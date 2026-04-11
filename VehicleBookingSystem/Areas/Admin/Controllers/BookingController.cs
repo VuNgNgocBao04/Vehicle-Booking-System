@@ -1,0 +1,173 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Data;
+using VehicleBookingSystem.Data;
+using VehicleBookingSystem.Models;
+using VehicleBookingSystem.ViewModels;
+
+namespace VehicleBookingSystem.Areas.Admin.Controllers;
+
+[Area("Admin")]
+[Authorize(Roles = "Admin")]
+public class BookingController : Controller
+{
+    private readonly ApplicationDbContext _context;
+
+    public BookingController(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Index(string? searchTerm, BookingStatus? status, int page = 1, int pageSize = 10)
+    {
+        var query = _context.Bookings
+            .AsNoTracking()
+            .Include(booking => booking.Vehicle)
+            .Include(booking => booking.User)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var keyword = searchTerm.Trim();
+            query = query.Where(booking =>
+                booking.BookingCode.Contains(keyword) ||
+                (booking.Vehicle != null && booking.Vehicle.LicensePlate.Contains(keyword)) ||
+                (booking.User != null && booking.User.FullName.Contains(keyword)) ||
+                (booking.User != null && booking.User.Email != null && booking.User.Email.Contains(keyword)));
+        }
+
+        if (status.HasValue)
+        {
+            query = query.Where(booking => booking.Status == status.Value);
+        }
+
+        var totalItems = await query.CountAsync();
+        page = Math.Max(1, page);
+        pageSize = pageSize <= 0 ? 10 : pageSize;
+
+        var items = await query
+            .OrderByDescending(booking => booking.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var model = new AdminBookingIndexViewModel
+        {
+            SearchTerm = searchTerm,
+            Status = status,
+            Bookings = new PagedResult<Booking>
+            {
+                Items = items,
+                Page = page,
+                PageSize = pageSize,
+                TotalItems = totalItems
+            }
+        };
+
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Approve(Guid id)
+    {
+        await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+        var booking = await _context.Bookings.FirstOrDefaultAsync(item => item.Id == id);
+        if (booking is null)
+        {
+            await transaction.RollbackAsync();
+            return NotFound();
+        }
+
+        if (booking.Status != BookingStatus.Pending)
+        {
+            await transaction.RollbackAsync();
+            TempData["Error"] = "Only pending bookings can be approved.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var hasConflict = await _context.Bookings.AnyAsync(item =>
+            item.Id != id &&
+            item.VehicleId == booking.VehicleId &&
+            (item.Status == BookingStatus.Pending || item.Status == BookingStatus.Confirmed) &&
+            booking.PickupDateTime < item.ReturnDateTime &&
+            booking.ReturnDateTime > item.PickupDateTime);
+
+        if (hasConflict)
+        {
+            await transaction.RollbackAsync();
+            TempData["Error"] = "Cannot approve booking because another pending/confirmed booking already overlaps this period. Please reject or cancel the conflicting booking first.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        booking.Status = BookingStatus.Confirmed;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            await transaction.RollbackAsync();
+            TempData["Error"] = "Booking was updated by another request. Please refresh and try again.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        TempData["Message"] = "Booking approved.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Reject(Guid id)
+    {
+        return await UpdateStatusAsync(id, BookingStatus.Rejected, "Booking rejected.", BookingStatus.Pending);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Cancel(Guid id)
+    {
+        return await UpdateStatusAsync(id, BookingStatus.Cancelled, "Booking cancelled.", BookingStatus.Pending, BookingStatus.Confirmed);
+    }
+
+    private async Task<IActionResult> UpdateStatusAsync(Guid id, BookingStatus newStatus, string message, params BookingStatus[] allowedFromStatuses)
+    {
+        await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+        var booking = await _context.Bookings.FirstOrDefaultAsync(item => item.Id == id);
+        if (booking is null)
+        {
+            await transaction.RollbackAsync();
+            return NotFound();
+        }
+
+        if (allowedFromStatuses.Length > 0 && !allowedFromStatuses.Contains(booking.Status))
+        {
+            await transaction.RollbackAsync();
+            TempData["Error"] = $"Cannot change booking status from {booking.Status}.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        booking.Status = newStatus;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            await transaction.RollbackAsync();
+            TempData["Error"] = "Booking was updated by another request. Please refresh and try again.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        TempData["Message"] = message;
+        return RedirectToAction(nameof(Index));
+    }
+}

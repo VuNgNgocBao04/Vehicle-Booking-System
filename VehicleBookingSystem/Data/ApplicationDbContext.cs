@@ -48,6 +48,7 @@ public class ApplicationDbContext : IdentityDbContext<AppUser, AppRole, Guid>
             entity.Property(booking => booking.PickupLocation).HasMaxLength(200).IsRequired();
             entity.Property(booking => booking.DropoffLocation).HasMaxLength(200).IsRequired();
             entity.Property(booking => booking.Status).HasConversion<string>().HasMaxLength(30);
+            entity.Property(booking => booking.RowVersion).IsRowVersion();
             entity.HasIndex(booking => booking.BookingCode).IsUnique();
             entity.HasOne(booking => booking.User)
                 .WithMany(user => user.Bookings)
