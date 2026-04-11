@@ -1,13 +1,129 @@
+@model VehicleBookingSystem.ViewModels.CustomerVehicleIndexViewModel
+
 @{
-    ViewData["Title"] = "Customer Portal";
+    ViewData["Title"] = "Browse Vehicles";
 }
 
-<div class="container py-5">
-    <h1 class="h3 mb-3">Customer Portal</h1>
-    <p class="text-muted mb-4">You are logged in as a customer. This page requires authentication and customer role access.</p>
-
-    <div class="d-flex flex-wrap gap-2">
-        <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Go to home</a>
-        <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Privacy">Privacy Policy</a>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0">Browse Vehicles</h1>
+        <a class="btn btn-outline-secondary" asp-controller="Booking" asp-action="MyBookings">My Bookings</a>
     </div>
+
+    @if (TempData["Message"] is string message)
+    {
+        <div class="alert alert-info">@message</div>
+    }
+
+    <form id="vehicleFilterForm" method="get" class="card card-body mb-3">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <input asp-for="Filter.SearchTerm" class="form-control" placeholder="Search name or plate" />
+            </div>
+            <div class="col-md-2">
+                <select asp-for="Filter.VehicleCategoryId" asp-items="Model.CategoryOptions" class="form-select">
+                    <option value="">All categories</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input asp-for="Filter.Brand" class="form-control" placeholder="Brand" />
+            </div>
+            <div class="col-md-2">
+                <input asp-for="Filter.MinDailyRate" class="form-control" placeholder="Min price" />
+            </div>
+            <div class="col-md-2">
+                <input asp-for="Filter.MaxDailyRate" class="form-control" placeholder="Max price" />
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary w-100">Go</button>
+            </div>
+        </div>
+    </form>
+
+    <div id="loadingSpinner" class="text-center py-3 d-none">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+
+    <div id="vehicleListContainer">
+        <partial name="_VehicleList" model="Model" />
+    </div>
+
+    @if (Model.SearchHistory.Any())
+    {
+        <div class="mt-4">
+            <h2 class="h6">Recent Search History (Session)</h2>
+            <ul class="list-group">
+                @foreach (var item in Model.SearchHistory.Take(5))
+                {
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>@(string.IsNullOrWhiteSpace(item.Keyword) ? "(No keyword)" : item.Keyword) - @item.FilterSummary</span>
+                        <small class="text-muted">@item.At.ToLocalTime().ToString("dd/MM HH:mm")</small>
+                    </li>
+                }
+            </ul>
+        </div>
+    }
 </div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const form = document.getElementById("vehicleFilterForm");
+            const container = document.getElementById("vehicleListContainer");
+            const spinner = document.getElementById("loadingSpinner");
+
+            async function fetchVehicles(url) {
+                spinner.classList.remove("d-none");
+                try {
+                    const response = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+                    if (!response.ok) {
+                        throw new Error("Unable to load vehicles.");
+                    }
+
+                    const html = await response.text();
+                    container.innerHTML = html;
+                    bindPagination();
+                    bindCommentButtons();
+                } catch (error) {
+                    container.innerHTML = '<div class="alert alert-danger">' + error.message + '</div>';
+                } finally {
+                    spinner.classList.add("d-none");
+                }
+            }
+
+            function bindPagination() {
+                container.querySelectorAll(".js-page-link").forEach(link => {
+                    link.addEventListener("click", event => {
+                        event.preventDefault();
+                        fetchVehicles(link.href);
+                    });
+                });
+            }
+
+            function bindCommentButtons() {
+                container.querySelectorAll(".js-load-comments").forEach(button => {
+                    button.addEventListener("click", async () => {
+                        const vehicleId = button.dataset.vehicleId;
+                        const target = document.getElementById("comments-" + vehicleId);
+                        if (!target) {
+                            return;
+                        }
+
+                        target.innerHTML = '<div class="text-muted">Loading comments...</div>';
+                        const response = await fetch(`/Customer/VehicleComments?vehicleId=${vehicleId}`, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+                        target.innerHTML = await response.text();
+                    });
+                });
+            }
+
+            form.addEventListener("submit", event => {
+                event.preventDefault();
+                const params = new URLSearchParams(new FormData(form));
+                fetchVehicles(`/Customer/Index?${params.toString()}`);
+            });
+
+            bindPagination();
+            bindCommentButtons();
+        })();
+    </script>
+}

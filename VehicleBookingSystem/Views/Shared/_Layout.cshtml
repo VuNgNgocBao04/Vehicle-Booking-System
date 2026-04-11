@@ -31,7 +31,10 @@
                             @if (User.IsInRole("Customer"))
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link" asp-area="" asp-controller="Customer" asp-action="Index">Customer Portal</a>
+                                    <a class="nav-link" asp-area="" asp-controller="Customer" asp-action="Index">Browse Vehicles</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-area="" asp-controller="Booking" asp-action="MyBookings">My Bookings</a>
                                 </li>
                             }
 

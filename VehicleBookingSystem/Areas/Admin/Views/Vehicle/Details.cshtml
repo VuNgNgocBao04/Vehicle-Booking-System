@@ -1,0 +1,25 @@
+@model VehicleBookingSystem.Models.Vehicle
+
+@{
+    ViewData["Title"] = "Vehicle Details";
+}
+
+<h1 class="h4 mb-3">Vehicle Details</h1>
+
+<div class="card card-body">
+    <dl class="row mb-0">
+        <dt class="col-sm-3">Code</dt><dd class="col-sm-9">@Model.Code</dd>
+        <dt class="col-sm-3">Vehicle</dt><dd class="col-sm-9">@Model.Brand @Model.Model</dd>
+        <dt class="col-sm-3">Category</dt><dd class="col-sm-9">@Model.VehicleCategory?.Name</dd>
+        <dt class="col-sm-3">License Plate</dt><dd class="col-sm-9">@Model.LicensePlate</dd>
+        <dt class="col-sm-3">Seat Count</dt><dd class="col-sm-9">@Model.SeatCount</dd>
+        <dt class="col-sm-3">Daily Rate</dt><dd class="col-sm-9">@Model.DailyRate.ToString("N0")</dd>
+        <dt class="col-sm-3">Status</dt><dd class="col-sm-9">@Model.Status</dd>
+        <dt class="col-sm-3">Description</dt><dd class="col-sm-9">@Model.Description</dd>
+    </dl>
+</div>
+
+<div class="mt-3 d-flex gap-2">
+    <a class="btn btn-primary" asp-action="Edit" asp-route-id="@Model.Id">Edit</a>
+    <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
+</div>

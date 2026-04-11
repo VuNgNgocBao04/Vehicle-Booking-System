@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using VehicleBookingSystem.Extensions;
 using VehicleBookingSystem.Models;
 using VehicleBookingSystem.ViewModels;
 
@@ -77,6 +78,7 @@ public class AccountController : Controller
         }
 
         await _signInManager.SignInAsync(user, isPersistent: false);
+        await StoreUserSessionAsync(user);
 
         return RedirectToAction("Index", "Customer");
     }
@@ -129,6 +131,8 @@ public class AccountController : Controller
             return View(model);
         }
 
+        await StoreUserSessionAsync(user);
+
         if (!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
         {
             return Redirect(model.ReturnUrl);
@@ -148,6 +152,7 @@ public class AccountController : Controller
     public async Task<IActionResult> Logout()
     {
         await _signInManager.SignOutAsync();
+        HttpContext.Session.Clear();
         return RedirectToAction("Index", "Home");
     }
 
@@ -156,5 +161,34 @@ public class AccountController : Controller
     public IActionResult AccessDenied()
     {
         return View();
+    }
+
+    private async Task StoreUserSessionAsync(AppUser user)
+    {
+        var roles = await _userManager.GetRolesAsync(user);
+        var profile = new SessionUserProfile
+        {
+            UserId = user.Id,
+            FullName = user.FullName,
+            Role = roles.FirstOrDefault() ?? "Customer",
+            Avatar = BuildAvatar(user.FullName)
+        };
+
+        HttpContext.Session.SetObject(SessionKeys.UserProfile, profile);
+    }
+
+    private static string BuildAvatar(string fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+        {
+            return "U";
+        }
+
+        var initials = string.Concat(fullName
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Take(2)
+            .Select(part => char.ToUpperInvariant(part[0])));
+
+        return string.IsNullOrWhiteSpace(initials) ? "U" : initials;
     }
 }

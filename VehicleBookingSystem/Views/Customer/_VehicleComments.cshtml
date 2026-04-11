@@ -1,0 +1,8 @@
+@model IEnumerable<string>
+
+<ul class="list-group list-group-flush">
+    @foreach (var comment in Model)
+    {
+        <li class="list-group-item px-0">@comment</li>
+    }
+</ul>

@@ -1,0 +1,96 @@
+@model VehicleBookingSystem.ViewModels.BookingCreateViewModel
+
+@{
+    ViewData["Title"] = "Create Booking";
+}
+
+<div class="container py-4" style="max-width: 760px;">
+    <h1 class="h4 mb-3">Create Booking</h1>
+
+    <div class="card card-body mb-3 bg-light">
+        <div><strong>Vehicle:</strong> @Model.VehicleName</div>
+        <div><strong>Daily Rate:</strong> @Model.DailyRate.ToString("N0")</div>
+        <div><strong>Estimated Total:</strong> <span id="estimatedTotal">@Model.EstimatedTotalAmount.ToString("N0")</span></div>
+        <div class="small" id="availabilityMessage"></div>
+    </div>
+
+    <form asp-action="Create" method="post" id="bookingForm">
+        @Html.AntiForgeryToken()
+        <input asp-for="VehicleId" type="hidden" />
+
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="PickupLocation" class="form-label"></label>
+                <input asp-for="PickupLocation" class="form-control" />
+                <span asp-validation-for="PickupLocation" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="DropoffLocation" class="form-label"></label>
+                <input asp-for="DropoffLocation" class="form-control" />
+                <span asp-validation-for="DropoffLocation" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="PickupDateTime" class="form-label"></label>
+                <input asp-for="PickupDateTime" class="form-control" type="date" />
+                <span asp-validation-for="PickupDateTime" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="ReturnDateTime" class="form-label"></label>
+                <input asp-for="ReturnDateTime" class="form-control" type="date" />
+                <span asp-validation-for="ReturnDateTime" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="PaymentMethod" class="form-label"></label>
+                <select asp-for="PaymentMethod" asp-items="Model.PaymentMethodOptions" class="form-select"></select>
+                <span asp-validation-for="PaymentMethod" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="mt-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Confirm Booking</button>
+            <a asp-controller="Customer" asp-action="Index" class="btn btn-outline-secondary">Back</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const pickup = document.getElementById("PickupDateTime");
+            const returns = document.getElementById("ReturnDateTime");
+            const vehicleId = document.getElementById("VehicleId").value;
+            const availabilityMessage = document.getElementById("availabilityMessage");
+            const estimatedTotal = document.getElementById("estimatedTotal");
+
+            async function checkAvailability() {
+                if (!pickup.value || !returns.value) {
+                    return;
+                }
+
+                const query = new URLSearchParams({
+                    vehicleId: vehicleId,
+                    pickupDateTime: pickup.value,
+                    returnDateTime: returns.value
+                });
+
+                const response = await fetch(`/Booking/CheckAvailability?${query.toString()}`);
+                const data = await response.json();
+
+                availabilityMessage.textContent = data.message;
+                availabilityMessage.className = data.available ? "small text-success" : "small text-danger";
+
+                if (typeof data.totalAmount === "number") {
+                    estimatedTotal.textContent = data.totalAmount.toLocaleString();
+                }
+            }
+
+            pickup.addEventListener("change", checkAvailability);
+            returns.addEventListener("change", checkAvailability);
+        })();
+    </script>
+}

@@ -1,0 +1,94 @@
+@model VehicleBookingSystem.ViewModels.BookingHistoryIndexViewModel
+
+@{
+    ViewData["Title"] = "My Bookings";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h4 mb-0">My Bookings</h1>
+        <a class="btn btn-outline-secondary" asp-controller="Customer" asp-action="Index">Browse Vehicles</a>
+    </div>
+
+    @if (TempData["Message"] is string message)
+    {
+        <div class="alert alert-success">@message</div>
+    }
+    @if (TempData["Error"] is string error)
+    {
+        <div class="alert alert-danger">@error</div>
+    }
+
+    <form method="get" class="card card-body mb-3">
+        <div class="row g-2">
+            <div class="col-md-8">
+                <input name="searchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Search by code or plate" />
+            </div>
+            <div class="col-md-2">
+                <select name="status" class="form-select" asp-items="Html.GetEnumSelectList<VehicleBookingSystem.Models.BookingStatus>()">
+                    <option value="">All status</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-dark w-100" type="submit">Filter</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Vehicle</th>
+                    <th>Period</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!Model.Bookings.Items.Any())
+            {
+                <tr><td colspan="6" class="text-center text-muted">No booking history yet.</td></tr>
+            }
+            else
+            {
+                @foreach (var booking in Model.Bookings.Items)
+                {
+                    <tr>
+                        <td>@booking.BookingCode</td>
+                        <td>@booking.Vehicle?.Brand @booking.Vehicle?.Model<br /><small class="text-muted">@booking.Vehicle?.LicensePlate</small></td>
+                        <td>@booking.PickupDateTime.ToString("dd/MM/yyyy") - @booking.ReturnDateTime.ToString("dd/MM/yyyy")</td>
+                        <td>@booking.TotalAmount.ToString("N0")</td>
+                        <td>@booking.Status</td>
+                        <td class="text-end">
+                            @if (booking.Status == VehicleBookingSystem.Models.BookingStatus.Pending || booking.Status == VehicleBookingSystem.Models.BookingStatus.Confirmed)
+                            {
+                                <form asp-action="Cancel" asp-route-id="@booking.Id" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button class="btn btn-sm btn-outline-danger" type="submit">Cancel</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.Bookings.TotalPages > 1)
+    {
+        <nav>
+            <ul class="pagination">
+                @for (var i = 1; i <= Model.Bookings.TotalPages; i++)
+                {
+                    <li class="page-item @(Model.Bookings.Page == i ? "active" : string.Empty)">
+                        <a class="page-link" asp-action="MyBookings" asp-route-page="@i" asp-route-searchTerm="@Model.SearchTerm" asp-route-status="@Model.Status">@i</a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
+</div>

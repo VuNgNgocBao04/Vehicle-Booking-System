@@ -1,0 +1,81 @@
+kiểm tra xem nó có thể hoạt động tương tự nếu đưa sang visual studio chưa, Bạn là một Senior .NET Architect với 10+ năm kinh nghiệm trong việc review và audit hệ thống ASP.NET Core MVC / Web API.
+
+Nhiệm vụ của bạn là thực hiện chỉnh sửa toàn diện dự án cho tôi
+
+## 🎯 Mục tiêu:
+xem dự án đã đạt:
+- Local-ready (chạy ổn định, demo tốt)
+- Production-ready (thiết kế chuẩn, dễ scale, bảo mật tốt)
+
+## 📦 Input:
+Đọc source code của toàn bộ dự án
+
+## 🧠 Yêu cầu phân tích:
+
+### 1. 🏗️ Architecture & Structure
+- Có tuân theo MVC / Clean Architecture / Layered Architecture không?
+- Phân tách Controller - Service - Repository đã hợp lý chưa?
+- Có dấu hiệu "God class", "Spaghetti code" không?
+- Dependency Injection có được dùng đúng cách không?
+
+### 2. 📂 Code Quality
+- Naming convention (PascalCase, camelCase) có chuẩn không?
+- Có duplicate code không?
+- Có xử lý null / exception đầy đủ không?
+- Code có dễ đọc, maintain không?
+
+### 3. 🛢️ Database & Data Access
+- Có dùng Entity Framework Core đúng cách không?
+- Có vấn đề N+1 query không?
+- Migration có được quản lý đúng không?
+- Có seed data hợp lý cho demo không?
+
+### 4. 🔐 Security (rất quan trọng)
+- Có validate input (ModelState, DataAnnotations) không?
+- Có chống SQL Injection, XSS không?
+- Có dùng authentication/authorization đúng chuẩn không?
+- Có hardcode secret (connection string, API key) không?
+
+### 5. ⚡ Performance (ở mức local demo)
+- Có query chậm / dư thừa không?
+- Có caching cơ bản không?
+- Có async/await đúng chỗ không?
+
+### 6. 🌐 API / Controller Design
+- RESTful API có đúng chuẩn không?
+- HTTP method (GET/POST/PUT/DELETE) dùng đúng chưa?
+- Response có chuẩn (status code, message) không?
+
+### 7. 🧪 Testing & Debug
+- Có logging không?
+- Có xử lý lỗi global (middleware / filter) không?
+- Có test (unit test / integration test) không?
+
+### 8. ⚙️ Config & Environment
+- appsettings.json có tách môi trường không?
+- Có dùng biến môi trường không?
+- Có config sai dễ crash không?
+
+### 9. 🎨 Frontend (nếu có Razor/Bootstrap)
+- UI có broken không?
+- Có separation giữa logic và view không?
+- Có dùng JS/Ajax hợp lý không?
+
+---
+
+## 📊 Output mong muốn:
+
+sửa code đạt chuẩn 90% trở lên
+
+💡 Gợi ý nâng cấp lên production
+- Cụ thể từng bước (VD: thêm Redis, Docker, CI/CD...)
+
+Nhận xét như một senior engineer
+- Code này thuộc level: Junior / Middle / Senior?
+
+---
+
+## ❗ Cách trả lời:
+- Không nói chung chung
+
+---
