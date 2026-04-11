@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Vehicle Booking Admin</title>
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/VehicleBookingSystem.styles.css" asp-append-version="true" />
+</head>
+<body class="admin-layout">
+    <div class="admin-app">
+        <aside class="admin-sidebar">
+            <div class="admin-brand">
+                <div class="admin-brand-mark"></div>
+                <div>
+                    <div class="text-uppercase small text-white-50">Admin template</div>
+                    <div class="h5 mb-0">Vehicle Booking</div>
+                </div>
+            </div>
+
+            <nav class="nav flex-column">
+                <a class="nav-link active" href="#overview">
+                    <span>Overview</span>
+                    <span>01</span>
+                </a>
+                <a class="nav-link" href="#fleet">
+                    <span>Fleet</span>
+                    <span>02</span>
+                </a>
+                <a class="nav-link" href="#bookings">
+                    <span>Bookings</span>
+                    <span>03</span>
+                </a>
+                <a class="nav-link" href="#users">
+                    <span>Users</span>
+                    <span>04</span>
+                </a>
+                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">
+                    <span>User site</span>
+                    <span>↗</span>
+                </a>
+            </nav>
+        </aside>
+
+        <div class="admin-main">
+            <header class="admin-topbar">
+                <div>
+                    <div class="text-uppercase small text-white-50">Control panel</div>
+                    <div class="h4 mb-0">Operations dashboard</div>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="badge rounded-pill text-bg-success">System healthy</span>
+                    <a class="btn btn-outline-light btn-sm" asp-area="" asp-controller="Home" asp-action="Index">View user site</a>
+                    <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
+                        <button type="submit" class="btn btn-light btn-sm">Logout</button>
+                    </form>
+                </div>
+            </header>
+
+            <main class="admin-content">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
