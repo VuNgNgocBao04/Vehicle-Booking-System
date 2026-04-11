@@ -65,18 +65,25 @@
                     <td>@booking.Status</td>
                     <td class="text-end">
                         <div class="btn-group btn-group-sm">
-                            <form asp-action="Approve" asp-route-id="@booking.Id" method="post">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-outline-success">Approve</button>
-                            </form>
-                            <form asp-action="Reject" asp-route-id="@booking.Id" method="post">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-outline-warning">Reject</button>
-                            </form>
-                            <form asp-action="Cancel" asp-route-id="@booking.Id" method="post">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-outline-danger">Cancel</button>
-                            </form>
+                            @if (booking.Status == VehicleBookingSystem.Models.BookingStatus.Pending)
+                            {
+                                <form asp-action="Approve" asp-route-id="@booking.Id" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-outline-success">Approve</button>
+                                </form>
+                                <form asp-action="Reject" asp-route-id="@booking.Id" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-outline-warning">Reject</button>
+                                </form>
+                            }
+                            @if (booking.Status == VehicleBookingSystem.Models.BookingStatus.Pending ||
+                                 booking.Status == VehicleBookingSystem.Models.BookingStatus.Confirmed)
+                            {
+                                <form asp-action="Cancel" asp-route-id="@booking.Id" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-outline-danger">Cancel</button>
+                                </form>
+                            }
                         </div>
                     </td>
                 </tr>

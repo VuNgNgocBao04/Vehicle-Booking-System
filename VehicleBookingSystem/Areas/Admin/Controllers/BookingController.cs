@@ -73,16 +73,21 @@ public class BookingController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(Guid id)
     {
-        var booking = await _context.Bookings
-            .AsNoTracking()
-            .FirstOrDefaultAsync(item => item.Id == id);
+        await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
+        var booking = await _context.Bookings.FirstOrDefaultAsync(item => item.Id == id);
         if (booking is null)
         {
+            await transaction.RollbackAsync();
             return NotFound();
         }
 
-        await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        if (booking.Status != BookingStatus.Pending)
+        {
+            await transaction.RollbackAsync();
+            TempData["Error"] = "Only pending bookings can be approved.";
+            return RedirectToAction(nameof(Index));
+        }
 
         var hasConflict = await _context.Bookings.AnyAsync(item =>
             item.Id != id &&
@@ -98,8 +103,7 @@ public class BookingController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        var trackedBooking = await _context.Bookings.FirstAsync(item => item.Id == id);
-        trackedBooking.Status = BookingStatus.Confirmed;
+        booking.Status = BookingStatus.Confirmed;
 
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();
@@ -112,17 +116,17 @@ public class BookingController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reject(Guid id)
     {
-        return await UpdateStatusAsync(id, BookingStatus.Rejected, "Booking rejected.");
+        return await UpdateStatusAsync(id, BookingStatus.Rejected, "Booking rejected.", BookingStatus.Pending);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Cancel(Guid id)
     {
-        return await UpdateStatusAsync(id, BookingStatus.Cancelled, "Booking cancelled.");
+        return await UpdateStatusAsync(id, BookingStatus.Cancelled, "Booking cancelled.", BookingStatus.Pending, BookingStatus.Confirmed);
     }
 
-    private async Task<IActionResult> UpdateStatusAsync(Guid id, BookingStatus status, string message)
+    private async Task<IActionResult> UpdateStatusAsync(Guid id, BookingStatus newStatus, string message, params BookingStatus[] allowedFromStatuses)
     {
         var booking = await _context.Bookings.FindAsync(id);
         if (booking is null)
@@ -130,7 +134,13 @@ public class BookingController : Controller
             return NotFound();
         }
 
-        booking.Status = status;
+        if (allowedFromStatuses.Length > 0 && !allowedFromStatuses.Contains(booking.Status))
+        {
+            TempData["Error"] = $"Cannot change booking status from {booking.Status}.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        booking.Status = newStatus;
         await _context.SaveChangesAsync();
         TempData["Message"] = message;
         return RedirectToAction(nameof(Index));
