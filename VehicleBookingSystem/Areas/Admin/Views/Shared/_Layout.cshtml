@@ -53,6 +53,9 @@
                 <div class="d-flex align-items-center gap-3">
                     <span class="badge rounded-pill text-bg-success">System healthy</span>
                     <a class="btn btn-outline-light btn-sm" asp-area="" asp-controller="Home" asp-action="Index">View user site</a>
+                    <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
+                        <button type="submit" class="btn btn-light btn-sm">Logout</button>
+                    </form>
                 </div>
             </header>
 

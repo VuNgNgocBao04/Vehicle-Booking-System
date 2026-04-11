@@ -1,0 +1,13 @@
+@{
+    ViewData["Title"] = "Customer Portal";
+}
+
+<div class="container py-5">
+    <h1 class="h3 mb-3">Customer Portal</h1>
+    <p class="text-muted mb-4">You are logged in as a customer. This page requires authentication and customer role access.</p>
+
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Go to home</a>
+        <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Privacy">Privacy Policy</a>
+    </div>
+</div>
