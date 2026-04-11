@@ -13,13 +13,18 @@
     <div class="alert alert-success">@message</div>
 }
 
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
 <form method="get" class="card card-body mb-3">
     <div class="row g-2">
         <div class="col-md-6">
             <input name="searchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Search code, customer, email, plate" />
         </div>
         <div class="col-md-3">
-            <select name="status" class="form-select" asp-items="Html.GetEnumSelectList<VehicleBookingSystem.Models.BookingStatus>()">
+            <select asp-for="Status" class="form-select" asp-items="Html.GetEnumSelectList<VehicleBookingSystem.Models.BookingStatus>()">
                 <option value="">All status</option>
             </select>
         </div>

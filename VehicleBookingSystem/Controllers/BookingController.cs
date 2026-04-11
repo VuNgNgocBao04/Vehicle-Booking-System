@@ -1,3 +1,4 @@
+using System.Data;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -109,10 +110,19 @@ public class BookingController : Controller
             return Forbid();
         }
 
+        await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+        if (!await IsVehicleAvailableAsync(model.VehicleId, model.PickupDateTime, model.ReturnDateTime))
+        {
+            await transaction.RollbackAsync();
+            ModelState.AddModelError(string.Empty, "Vehicle is not available in the selected period.");
+            return View(model);
+        }
+
         var booking = new Booking
         {
             Id = Guid.NewGuid(),
-            BookingCode = $"BK-{DateTime.UtcNow:yyyyMMddHHmmss}",
+            BookingCode = GenerateBookingCode(),
             UserId = parsedUserId,
             VehicleId = model.VehicleId,
             PickupLocation = model.PickupLocation.Trim(),
@@ -132,7 +142,18 @@ public class BookingController : Controller
         };
 
         _context.Bookings.Add(booking);
-        await _context.SaveChangesAsync();
+
+        try
+        {
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch (DbUpdateException)
+        {
+            await transaction.RollbackAsync();
+            ModelState.AddModelError(string.Empty, "Unable to create booking right now. Please try again.");
+            return View(model);
+        }
 
         HttpContext.Session.Remove(SessionKeys.PendingBookingDraft);
         TempData["Message"] = "Booking created successfully.";
@@ -257,9 +278,15 @@ public class BookingController : Controller
         return !await _context.Bookings.AnyAsync(booking =>
             booking.VehicleId == vehicleId &&
             booking.Status != BookingStatus.Cancelled &&
+            booking.Status != BookingStatus.Rejected &&
             booking.Status != BookingStatus.Completed &&
             pickupDateTime < booking.ReturnDateTime &&
             returnDateTime > booking.PickupDateTime);
+    }
+
+    private static string GenerateBookingCode()
+    {
+        return $"BK-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
     }
 
     private static decimal CalculateTotal(decimal dailyRate, DateTime pickupDateTime, DateTime returnDateTime)

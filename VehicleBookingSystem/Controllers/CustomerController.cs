@@ -114,14 +114,7 @@ public class CustomerController : Controller
             return NotFound();
         }
 
-        var comments = new[]
-        {
-            $"{vehicle.Brand} {vehicle.Model} has a smooth driving experience.",
-            "Cabin is clean and the car is well maintained.",
-            "Great value for price for short and medium trips."
-        };
-
-        return PartialView("_VehicleComments", comments);
+        return PartialView("_VehicleComments", Array.Empty<string>());
     }
 
     private void SaveSearchHistory(VehicleFilterViewModel filter)

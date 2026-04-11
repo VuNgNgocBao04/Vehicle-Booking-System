@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 using VehicleBookingSystem.Data;
 using VehicleBookingSystem.Models;
 using VehicleBookingSystem.ViewModels;
@@ -72,14 +73,46 @@ public class BookingController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(Guid id)
     {
-        return await UpdateStatusAsync(id, BookingStatus.Confirmed, "Booking approved.");
+        var booking = await _context.Bookings
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.Id == id);
+
+        if (booking is null)
+        {
+            return NotFound();
+        }
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+        var hasConflict = await _context.Bookings.AnyAsync(item =>
+            item.Id != id &&
+            item.VehicleId == booking.VehicleId &&
+            (item.Status == BookingStatus.Pending || item.Status == BookingStatus.Confirmed) &&
+            booking.PickupDateTime < item.ReturnDateTime &&
+            booking.ReturnDateTime > item.PickupDateTime);
+
+        if (hasConflict)
+        {
+            await transaction.RollbackAsync();
+            TempData["Error"] = "Cannot approve booking because the vehicle is already booked in the selected period.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var trackedBooking = await _context.Bookings.FirstAsync(item => item.Id == id);
+        trackedBooking.Status = BookingStatus.Confirmed;
+
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        TempData["Message"] = "Booking approved.";
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reject(Guid id)
     {
-        return await UpdateStatusAsync(id, BookingStatus.Cancelled, "Booking rejected.");
+        return await UpdateStatusAsync(id, BookingStatus.Rejected, "Booking rejected.");
     }
 
     [HttpPost]
