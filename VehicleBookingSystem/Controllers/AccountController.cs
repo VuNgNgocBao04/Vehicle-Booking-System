@@ -119,7 +119,7 @@ public class AccountController : Controller
 
         if (result.IsNotAllowed)
         {
-            ModelState.AddModelError(string.Empty, "Your account is not allowed to sign in. Please contact support.");
+            ModelState.AddModelError(string.Empty, "Your account is not yet confirmed. Please check your email.");
             return View(model);
         }
 
