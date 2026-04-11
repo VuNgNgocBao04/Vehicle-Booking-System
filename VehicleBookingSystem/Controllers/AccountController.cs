@@ -10,16 +10,13 @@ public class AccountController : Controller
 {
     private readonly SignInManager<AppUser> _signInManager;
     private readonly UserManager<AppUser> _userManager;
-    private readonly RoleManager<AppRole> _roleManager;
 
     public AccountController(
         SignInManager<AppUser> signInManager,
-        UserManager<AppUser> userManager,
-        RoleManager<AppRole> roleManager)
+        UserManager<AppUser> userManager)
     {
         _signInManager = signInManager;
         _userManager = userManager;
-        _roleManager = roleManager;
     }
 
     [HttpGet]
@@ -71,7 +68,14 @@ public class AccountController : Controller
             return View(model);
         }
 
-        await _userManager.AddToRoleAsync(user, "Customer");
+        var addRoleResult = await _userManager.AddToRoleAsync(user, "Customer");
+        if (!addRoleResult.Succeeded)
+        {
+            await _userManager.DeleteAsync(user);
+            ModelState.AddModelError(string.Empty, "Registration failed. Please try again.");
+            return View(model);
+        }
+
         await _signInManager.SignInAsync(user, isPersistent: false);
 
         return RedirectToAction("Index", "Customer");
@@ -106,7 +110,19 @@ public class AccountController : Controller
             return View(model);
         }
 
-        var result = await _signInManager.PasswordSignInAsync(user.Email, model.Password, model.RememberMe, lockoutOnFailure: true);
+        var result = await _signInManager.PasswordSignInAsync(user, model.Password, model.RememberMe, lockoutOnFailure: true);
+        if (result.IsLockedOut)
+        {
+            ModelState.AddModelError(string.Empty, "Your account has been locked due to multiple failed login attempts. Please try again in 5 minutes.");
+            return View(model);
+        }
+
+        if (result.IsNotAllowed)
+        {
+            ModelState.AddModelError(string.Empty, "Your account is not allowed to sign in. Please contact support.");
+            return View(model);
+        }
+
         if (!result.Succeeded)
         {
             ModelState.AddModelError(string.Empty, "Invalid email or password.");
