@@ -147,7 +147,19 @@ public class BookingsController : ControllerBase
                 PaymentMethod = request.PaymentMethod,
                 PaidAmount = totalAmount,
                 Status = PaymentStatus.Pending
-            }
+            },
+            StatusHistories =
+            [
+                new BookingStatusHistory
+                {
+                    Id = Guid.NewGuid(),
+                    FromStatus = null,
+                    ToStatus = BookingStatus.Pending,
+                    ChangedAtUtc = DateTime.UtcNow,
+                    ChangedBy = User.Identity?.Name ?? "API",
+                    Note = "API booking created"
+                }
+            ]
         };
 
         _context.Bookings.Add(bookingEntity);
@@ -194,7 +206,18 @@ public class BookingsController : ControllerBase
             return BadRequest(new { message = "Chỉ được hủy trước giờ nhận xe tối thiểu 6 tiếng." });
         }
 
+        var fromStatus = booking.Status;
         booking.Status = BookingStatus.Cancelled;
+        booking.StatusHistories.Add(new BookingStatusHistory
+        {
+            Id = Guid.NewGuid(),
+            BookingId = booking.Id,
+            FromStatus = fromStatus,
+            ToStatus = BookingStatus.Cancelled,
+            ChangedAtUtc = DateTime.UtcNow,
+            ChangedBy = User.Identity?.Name ?? "API",
+            Note = "API cancel"
+        });
         await _context.SaveChangesAsync();
         return Ok(new { message = "Đã hủy đơn đặt xe." });
     }

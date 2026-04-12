@@ -1,13 +1,14 @@
 using System.ComponentModel.DataAnnotations;
+using VehicleBookingSystem.Resources;
 
 namespace VehicleBookingSystem.Contracts.Auth;
 
 public sealed class TokenRequest
 {
-    [Required(ErrorMessage = "Email là bắt buộc.")]
-    [EmailAddress(ErrorMessage = "Email không đúng định dạng.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.Required))]
+    [EmailAddress(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.EmailInvalid))]
     public string Email { get; init; } = string.Empty;
 
-    [Required(ErrorMessage = "Mật khẩu là bắt buộc.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.Required))]
     public string Password { get; init; } = string.Empty;
 }

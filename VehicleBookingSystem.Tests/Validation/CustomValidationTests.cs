@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using VehicleBookingSystem.Validation;
 
 namespace VehicleBookingSystem.Tests.Validation;
@@ -8,6 +9,8 @@ public class CustomValidationTests
     [Fact]
     public void MinimumAgeAttribute_ReturnsError_WhenAgeUnder18()
     {
+        using var cultureScope = new CultureScope("vi-VN");
+
         var model = new RegisterAgeModel
         {
             DateOfBirth = DateTime.Today.AddYears(-17)
@@ -25,6 +28,8 @@ public class CustomValidationTests
     [Fact]
     public void EndDateAfterStartDate_ReturnsError_WhenDatesInvalid()
     {
+        using var cultureScope = new CultureScope("vi-VN");
+
         var model = new DateRangeModel
         {
             StartDate = DateTime.Today.AddDays(3),
@@ -38,6 +43,28 @@ public class CustomValidationTests
 
         Assert.False(valid);
         Assert.Contains(results, result => result.ErrorMessage!.Contains("Ngày kết thúc"));
+    }
+
+    private sealed class CultureScope : IDisposable
+    {
+        private readonly CultureInfo _originalCulture;
+        private readonly CultureInfo _originalUiCulture;
+
+        public CultureScope(string cultureName)
+        {
+            _originalCulture = CultureInfo.CurrentCulture;
+            _originalUiCulture = CultureInfo.CurrentUICulture;
+
+            var culture = CultureInfo.GetCultureInfo(cultureName);
+            CultureInfo.CurrentCulture = culture;
+            CultureInfo.CurrentUICulture = culture;
+        }
+
+        public void Dispose()
+        {
+            CultureInfo.CurrentCulture = _originalCulture;
+            CultureInfo.CurrentUICulture = _originalUiCulture;
+        }
     }
 
     private sealed class RegisterAgeModel

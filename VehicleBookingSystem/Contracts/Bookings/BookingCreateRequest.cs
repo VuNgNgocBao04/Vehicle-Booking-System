@@ -1,31 +1,32 @@
 using System.ComponentModel.DataAnnotations;
 using VehicleBookingSystem.Models;
 using VehicleBookingSystem.Validation;
+using VehicleBookingSystem.Resources;
 
 namespace VehicleBookingSystem.Contracts.Bookings;
 
 [EndDateAfterStartDate(nameof(PickupDateTime), nameof(ReturnDateTime))]
 public sealed class BookingCreateRequest
 {
-    [Required(ErrorMessage = "Mã xe là bắt buộc.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.VehicleRequired))]
     public Guid VehicleId { get; init; }
 
-    [Required(ErrorMessage = "Điểm nhận xe là bắt buộc.")]
-    [StringLength(200, ErrorMessage = "Điểm nhận xe tối đa 200 ký tự.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.PickupLocationRequired))]
+    [StringLength(200, ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.StringLength200))]
     public string PickupLocation { get; init; } = string.Empty;
 
-    [Required(ErrorMessage = "Điểm trả xe là bắt buộc.")]
-    [StringLength(200, ErrorMessage = "Điểm trả xe tối đa 200 ký tự.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.DropoffLocationRequired))]
+    [StringLength(200, ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.StringLength200))]
     public string DropoffLocation { get; init; } = string.Empty;
 
-    [Required(ErrorMessage = "Ngày nhận xe là bắt buộc.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.Required))]
     [DataType(DataType.DateTime)]
     public DateTime PickupDateTime { get; init; }
 
-    [Required(ErrorMessage = "Ngày trả xe là bắt buộc.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.Required))]
     [DataType(DataType.DateTime)]
     public DateTime ReturnDateTime { get; init; }
 
-    [Required(ErrorMessage = "Phương thức thanh toán là bắt buộc.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.PaymentMethodRequired))]
     public PaymentMethod PaymentMethod { get; init; }
 }

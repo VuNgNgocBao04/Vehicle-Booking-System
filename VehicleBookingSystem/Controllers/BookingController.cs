@@ -158,7 +158,19 @@ public class BookingController : Controller
                 PaymentMethod = model.PaymentMethod,
                 Status = PaymentStatus.Pending,
                 PaidAmount = model.EstimatedTotalAmount
-            }
+            },
+            StatusHistories =
+            [
+                new BookingStatusHistory
+                {
+                    Id = Guid.NewGuid(),
+                    FromStatus = null,
+                    ToStatus = BookingStatus.Pending,
+                    ChangedAtUtc = DateTime.UtcNow,
+                    ChangedBy = User.Identity?.Name ?? "Customer",
+                    Note = "Booking created"
+                }
+            ]
         };
 
         _context.Bookings.Add(booking);
@@ -305,7 +317,17 @@ public class BookingController : Controller
             return RedirectToAction(nameof(MyBookings));
         }
 
+        var fromStatus = booking.Status;
         booking.Status = BookingStatus.Cancelled;
+        booking.StatusHistories.Add(new BookingStatusHistory
+        {
+            Id = Guid.NewGuid(),
+            FromStatus = fromStatus,
+            ToStatus = BookingStatus.Cancelled,
+            ChangedAtUtc = DateTime.UtcNow,
+            ChangedBy = User.Identity?.Name ?? "Customer",
+            Note = "Customer cancelled booking"
+        });
 
         try
         {

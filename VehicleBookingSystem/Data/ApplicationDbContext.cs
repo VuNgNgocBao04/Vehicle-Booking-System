@@ -14,6 +14,7 @@ public class ApplicationDbContext : IdentityDbContext<AppUser, AppRole, Guid>
     public DbSet<VehicleCategory> VehicleCategories => Set<VehicleCategory>();
     public DbSet<Vehicle> Vehicles => Set<Vehicle>();
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<BookingStatusHistory> BookingStatusHistories => Set<BookingStatusHistory>();
     public DbSet<Payment> Payments => Set<Payment>();
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -66,6 +67,19 @@ public class ApplicationDbContext : IdentityDbContext<AppUser, AppRole, Guid>
                 .WithMany(vehicle => vehicle.Bookings)
                 .HasForeignKey(booking => booking.VehicleId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<BookingStatusHistory>(entity =>
+        {
+            entity.Property(history => history.FromStatus).HasConversion<string>().HasMaxLength(30);
+            entity.Property(history => history.ToStatus).HasConversion<string>().HasMaxLength(30);
+            entity.Property(history => history.ChangedBy).HasMaxLength(100).IsRequired();
+            entity.Property(history => history.Note).HasMaxLength(300);
+            entity.Property(history => history.ChangedAtUtc).HasColumnType("datetime2");
+            entity.HasOne(history => history.Booking)
+                .WithMany(booking => booking.StatusHistories)
+                .HasForeignKey(history => history.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<Payment>(entity =>

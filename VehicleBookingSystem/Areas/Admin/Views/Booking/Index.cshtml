@@ -1,41 +1,52 @@
 @model VehicleBookingSystem.ViewModels.AdminBookingIndexViewModel
+@inject Microsoft.Extensions.Localization.IStringLocalizer<VehicleBookingSystem.Resources.SharedResource> L
 
 @{
-    ViewData["Title"] = "Booking Management";
+    ViewData["Title"] = L["BookingManagement"];
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h4 mb-0">Booking Management</h1>
+    <h1 class="h4 mb-0">@L["BookingManagement"]</h1>
 </div>
 
-@if (TempData["Message"] is string message)
-{
-    <div class="alert alert-success">@message</div>
-}
-
-@if (TempData["Error"] is string error)
-{
-    <div class="alert alert-danger">@error</div>
-}
-
-<form method="get" class="card card-body mb-3">
+<form id="bookingFilterForm" class="admin-card p-3 mb-3">
+    @Html.AntiForgeryToken()
     <div class="row g-2">
-        <div class="col-md-6">
-            <input name="searchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Search code, customer, email, plate" />
+        <div class="col-12 col-md-6 col-lg-4">
+            <input id="bookingSearch" class="form-control" placeholder="@L["Search"] customer/plate/date" />
         </div>
-        <div class="col-md-3">
-            <select asp-for="Status" class="form-select" asp-items="Html.GetEnumSelectList<VehicleBookingSystem.Models.BookingStatus>()">
+        <div class="col-6 col-md-3 col-lg-2">
+            <select id="bookingStatusFilter" class="form-select">
                 <option value="">All status</option>
+                @foreach (var option in Html.GetEnumSelectList<VehicleBookingSystem.Models.BookingStatus>())
+                {
+                    <option value="@option.Text">@option.Text</option>
+                }
             </select>
         </div>
-        <div class="col-md-3">
-            <button type="submit" class="btn btn-dark w-100">Filter</button>
+        <div class="col-6 col-md-3 col-lg-3">
+            <select id="bookingVehicleFilter" class="form-select">
+                <option value="">All vehicles</option>
+                @foreach (var option in Model.VehicleOptions)
+                {
+                    <option value="@option.Value">@option.Text</option>
+                }
+            </select>
+        </div>
+        <div class="col-6 col-md-3 col-lg-1">
+            <input type="date" id="bookingFromDate" class="form-control" />
+        </div>
+        <div class="col-6 col-md-3 col-lg-1">
+            <input type="date" id="bookingToDate" class="form-control" />
+        </div>
+        <div class="col-12 col-lg-1 d-grid">
+            <button class="btn btn-outline-light btn-action" type="button" id="clearBookingFilter">Clear</button>
         </div>
     </div>
 </form>
 
-<div class="table-responsive">
-    <table class="table table-striped align-middle">
+<div class="table-responsive admin-card p-3">
+    <table id="bookingsTable" class="table table-striped table-hover align-middle w-100">
         <thead>
             <tr>
                 <th>Code</th>
@@ -43,66 +54,230 @@
                 <th>Vehicle</th>
                 <th>Period</th>
                 <th>Total</th>
-                <th>Status</th>
-                <th class="text-end">Action</th>
+                <th>@L["Status"]</th>
+                <th class="text-end">@L["Action"]</th>
             </tr>
         </thead>
-        <tbody>
-        @if (!Model.Bookings.Items.Any())
-        {
-            <tr><td colspan="7" class="text-center text-muted">No bookings found.</td></tr>
-        }
-        else
-        {
-            @foreach (var booking in Model.Bookings.Items)
-            {
-                <tr>
-                    <td>@booking.BookingCode</td>
-                    <td>@booking.User?.FullName<br /><small class="text-muted">@booking.User?.Email</small></td>
-                    <td>@booking.Vehicle?.Brand @booking.Vehicle?.Model<br /><small class="text-muted">@booking.Vehicle?.LicensePlate</small></td>
-                    <td>@booking.PickupDateTime.ToString("dd/MM/yyyy") - @booking.ReturnDateTime.ToString("dd/MM/yyyy")</td>
-                    <td>@booking.TotalAmount.ToString("N0")</td>
-                    <td>@booking.Status</td>
-                    <td class="text-end">
-                        <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
-                            @if (booking.Status == VehicleBookingSystem.Models.BookingStatus.Pending)
-                            {
-                                <form asp-action="Approve" asp-route-id="@booking.Id" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-outline-success">Approve</button>
-                                </form>
-                                <form asp-action="Reject" asp-route-id="@booking.Id" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-outline-warning">Reject</button>
-                                </form>
-                            }
-                            @if (booking.Status == VehicleBookingSystem.Models.BookingStatus.Pending ||
-                                 booking.Status == VehicleBookingSystem.Models.BookingStatus.Confirmed)
-                            {
-                                <form asp-action="Cancel" asp-route-id="@booking.Id" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
-                                </form>
-                            }
-                        </div>
-                    </td>
-                </tr>
-            }
-        }
-        </tbody>
     </table>
 </div>
 
-@if (Model.Bookings.TotalPages > 1)
-{
-    <nav>
-        <ul class="pagination">
-            @for (var i = 1; i <= Model.Bookings.TotalPages; i++)
-            {
-                <li class="page-item @(Model.Bookings.Page == i ? "active" : string.Empty)">
-                    <a class="page-link" asp-action="Index" asp-route-page="@i" asp-route-searchTerm="@Model.SearchTerm" asp-route-status="@Model.Status">@i</a>
-                </li>
+<div class="modal fade" id="bookingDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@L["BookingDetail"]</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="bookingDetailBody" class="small">Loading...</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@L["Close"]</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="bookingActionConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm action</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="bookingActionConfirmText"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@L["Cancel"]</button>
+                <button type="button" class="btn btn-primary" id="confirmBookingActionBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.min.css" />
+    <script>
+        (function () {
+            const antiForgeryToken = document.querySelector('#bookingFilterForm input[name="__RequestVerificationToken"]')?.value;
+            const searchInput = document.getElementById('bookingSearch');
+            const statusFilter = document.getElementById('bookingStatusFilter');
+            const vehicleFilter = document.getElementById('bookingVehicleFilter');
+            const fromDateFilter = document.getElementById('bookingFromDate');
+            const toDateFilter = document.getElementById('bookingToDate');
+            const clearFilterBtn = document.getElementById('clearBookingFilter');
+            const detailModalElement = document.getElementById('bookingDetailModal');
+            const actionModalElement = document.getElementById('bookingActionConfirmModal');
+            const detailBody = document.getElementById('bookingDetailBody');
+            const confirmActionText = document.getElementById('bookingActionConfirmText');
+            const confirmActionBtn = document.getElementById('confirmBookingActionBtn');
+            const detailModal = detailModalElement ? new bootstrap.Modal(detailModalElement) : null;
+            const actionModal = actionModalElement ? new bootstrap.Modal(actionModalElement) : null;
+            let pendingAction = null;
+
+            const table = new DataTable('#bookingsTable', {
+                processing: true,
+                serverSide: true,
+                responsive: true,
+                ajax: {
+                    url: '@Url.Action("TableData")',
+                    type: 'POST',
+                    headers: {
+                        'RequestVerificationToken': antiForgeryToken
+                    },
+                    data: function (d) {
+                        d.status = statusFilter?.value || '';
+                        d.vehicleId = vehicleFilter?.value || '';
+                        d.fromDate = fromDateFilter?.value || '';
+                        d.toDate = toDateFilter?.value || '';
+                    }
+                },
+                order: [[0, 'desc']],
+                columns: [
+                    { data: 'bookingCode' },
+                    {
+                        data: null,
+                        render: function (row) {
+                            return `${row.customer}<br/><small class="text-muted">${row.email || ''}</small>`;
+                        }
+                    },
+                    {
+                        data: null,
+                        render: function (row) {
+                            return `${row.vehicle}<br/><small class="text-muted">${row.plate || ''}</small>`;
+                        }
+                    },
+                    { data: 'period' },
+                    { data: 'totalAmount' },
+                    {
+                        data: null,
+                        render: function (row) {
+                            return `<span class="badge text-bg-${row.statusClass}">${row.status}</span>`;
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        className: 'text-end',
+                        render: function (row) {
+                            const canApproveReject = row.status === 'Pending';
+                            const canCancel = row.status === 'Pending' || row.status === 'Confirmed';
+
+                            return `<div class="d-inline-flex flex-wrap gap-1 justify-content-end">
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-action js-booking-detail" data-id="${row.id}">@L["Details"]</button>
+                                ${canApproveReject ? `<button type="button" class="btn btn-sm btn-outline-success btn-action js-booking-action" data-action="approve" data-id="${row.id}">@L["Approve"]</button>` : ''}
+                                ${canApproveReject ? `<button type="button" class="btn btn-sm btn-outline-warning btn-action js-booking-action" data-action="reject" data-id="${row.id}">@L["Reject"]</button>` : ''}
+                                ${canCancel ? `<button type="button" class="btn btn-sm btn-outline-danger btn-action js-booking-action" data-action="cancel" data-id="${row.id}">@L["Cancel"]</button>` : ''}
+                            </div>`;
+                        }
+                    }
+                ],
+                language: {
+                    emptyTable: '@L["NoData"]'
+                }
+            });
+
+            function reloadTable() {
+                table.ajax.reload(null, false);
             }
-        </ul>
-    </nav>
+
+            const debounce = window.VehicleBookingApp?.debounce || ((callback) => callback);
+
+            searchInput?.addEventListener('input', debounce(function () {
+                table.search(this.value).draw();
+            }, 300));
+
+            statusFilter?.addEventListener('change', reloadTable);
+            vehicleFilter?.addEventListener('change', reloadTable);
+            fromDateFilter?.addEventListener('change', reloadTable);
+            toDateFilter?.addEventListener('change', reloadTable);
+
+            clearFilterBtn?.addEventListener('click', function () {
+                searchInput.value = '';
+                statusFilter.value = '';
+                vehicleFilter.value = '';
+                fromDateFilter.value = '';
+                toDateFilter.value = '';
+                table.search('').draw();
+                reloadTable();
+            });
+
+            document.addEventListener('click', function (event) {
+                const detailButton = event.target.closest('.js-booking-detail');
+                if (detailButton) {
+                    const id = detailButton.getAttribute('data-id');
+                    detailBody.textContent = 'Loading...';
+
+                    $.get('@Url.Action("DetailData")', { id: id }).done(function (response) {
+                        const item = response.data;
+                        const historyHtml = (item.history || []).map(function (entry) {
+                            const actor = entry.actor ? ` <span class="text-muted">(${entry.actor})</span>` : '';
+                            const note = entry.note ? `<div class="text-muted small">${entry.note}</div>` : '';
+                            return `<li class="mb-2"><strong>${entry.status}</strong>${actor} - ${entry.at}${note}</li>`;
+                        }).join('');
+
+                        detailBody.innerHTML = `
+                            <div class="row g-2">
+                                <div class="col-md-6"><strong>Code:</strong> ${item.bookingCode}</div>
+                                <div class="col-md-6"><strong>Status:</strong> ${item.status}</div>
+                                <div class="col-md-6"><strong>Customer:</strong> ${item.customerName || '-'}</div>
+                                <div class="col-md-6"><strong>Email:</strong> ${item.customerEmail || '-'}</div>
+                                <div class="col-md-6"><strong>Vehicle:</strong> ${item.vehicleName}</div>
+                                <div class="col-md-6"><strong>Plate:</strong> ${item.plate || '-'}</div>
+                                <div class="col-md-6"><strong>Pickup:</strong> ${item.pickupDate}</div>
+                                <div class="col-md-6"><strong>Return:</strong> ${item.returnDate}</div>
+                                <div class="col-md-12"><strong>Route:</strong> ${item.pickupLocation} -> ${item.dropoffLocation}</div>
+                                <div class="col-md-6"><strong>Total:</strong> ${item.totalAmount}</div>
+                                <div class="col-md-6"><strong>Payment:</strong> ${item.paymentStatus}</div>
+                                <div class="col-md-12 mt-2"><strong>Status history:</strong><ul class="mb-0 mt-1">${historyHtml}</ul></div>
+                            </div>`;
+                        detailModal?.show();
+                    }).fail(function () {
+                        detailBody.textContent = 'Cannot load booking detail.';
+                    });
+
+                    return;
+                }
+
+                const actionButton = event.target.closest('.js-booking-action');
+                if (!actionButton) {
+                    return;
+                }
+
+                const action = actionButton.getAttribute('data-action');
+                const id = actionButton.getAttribute('data-id');
+                pendingAction = { action, id };
+                confirmActionText.textContent = `Are you sure you want to ${action} this booking?`;
+                actionModal?.show();
+            });
+
+            confirmActionBtn?.addEventListener('click', function () {
+                if (!pendingAction) {
+                    return;
+                }
+
+                const endpoint = pendingAction.action === 'approve'
+                    ? '@Url.Action("ApproveAjax")'
+                    : pendingAction.action === 'reject'
+                        ? '@Url.Action("RejectAjax")'
+                        : '@Url.Action("CancelAjax")';
+
+                $.ajax({
+                    url: endpoint,
+                    type: 'POST',
+                    headers: {
+                        'RequestVerificationToken': antiForgeryToken
+                    },
+                    data: { id: pendingAction.id }
+                }).done(function () {
+                    actionModal?.hide();
+                    reloadTable();
+                }).fail(function (xhr) {
+                    window.alert(xhr.responseJSON?.message || 'Action failed.');
+                });
+            });
+        })();
+    </script>
 }

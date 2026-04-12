@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Text;
 using VehicleBookingSystem.Data;
 using VehicleBookingSystem.Models;
 using VehicleBookingSystem.Services;
@@ -28,73 +30,219 @@ public class VehicleController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index([FromQuery] VehicleFilterViewModel filter)
+    public async Task<IActionResult> Index()
+    {
+        var model = new AdminVehicleIndexViewModel
+        {
+            CategoryOptions = await BuildCategoryOptionsAsync(null),
+            StatusOptions = BuildStatusOptions(null)
+        };
+
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> TableData()
+    {
+        var form = Request.Form;
+        var draw = ParseInt(form["draw"], 1);
+        var start = Math.Max(ParseInt(form["start"], 0), 0);
+        var length = Math.Clamp(ParseInt(form["length"], 10), 5, 100);
+        var search = form["search[value]"].ToString().Trim();
+        var categoryIdRaw = form["categoryId"].ToString();
+        var statusRaw = form["status"].ToString();
+
+        var categoryId = Guid.TryParse(categoryIdRaw, out var parsedCategoryId) ? (Guid?)parsedCategoryId : null;
+        var status = Enum.TryParse<VehicleStatus>(statusRaw, true, out var parsedStatus) ? (VehicleStatus?)parsedStatus : null;
+
+        var query = _context.Vehicles
+            .AsNoTracking()
+            .Include(vehicle => vehicle.VehicleCategory)
+            .AsQueryable();
+
+        var recordsTotal = await _context.Vehicles.CountAsync();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(vehicle =>
+                vehicle.Code.Contains(search) ||
+                vehicle.Brand.Contains(search) ||
+                vehicle.Model.Contains(search) ||
+                vehicle.LicensePlate.Contains(search));
+        }
+
+        if (categoryId.HasValue)
+        {
+            query = query.Where(vehicle => vehicle.VehicleCategoryId == categoryId.Value);
+        }
+
+        if (status.HasValue)
+        {
+            query = query.Where(vehicle => vehicle.Status == status.Value);
+        }
+
+        var recordsFiltered = await query.CountAsync();
+
+        var orderColumn = ParseInt(form["order[0][column]"], 0);
+        var orderDir = form["order[0][dir]"].ToString();
+        var descending = string.Equals(orderDir, "desc", StringComparison.OrdinalIgnoreCase);
+
+        query = orderColumn switch
+        {
+            1 => descending ? query.OrderByDescending(vehicle => vehicle.Brand).ThenByDescending(vehicle => vehicle.Model) : query.OrderBy(vehicle => vehicle.Brand).ThenBy(vehicle => vehicle.Model),
+            2 => descending ? query.OrderByDescending(vehicle => vehicle.VehicleCategory!.Name) : query.OrderBy(vehicle => vehicle.VehicleCategory!.Name),
+            3 => descending ? query.OrderByDescending(vehicle => vehicle.LicensePlate) : query.OrderBy(vehicle => vehicle.LicensePlate),
+            4 => descending ? query.OrderByDescending(vehicle => vehicle.DailyRate) : query.OrderBy(vehicle => vehicle.DailyRate),
+            5 => descending ? query.OrderByDescending(vehicle => vehicle.Status) : query.OrderBy(vehicle => vehicle.Status),
+            _ => descending ? query.OrderByDescending(vehicle => vehicle.Code) : query.OrderBy(vehicle => vehicle.Code)
+        };
+
+        var culture = CultureInfo.CurrentCulture;
+
+        var data = await query
+            .Skip(start)
+            .Take(length)
+            .Select(vehicle => new
+            {
+                id = vehicle.Id,
+                code = vehicle.Code,
+                vehicleName = vehicle.Brand + " " + vehicle.Model,
+                category = vehicle.VehicleCategory != null ? vehicle.VehicleCategory.Name : "-",
+                licensePlate = vehicle.LicensePlate,
+                dailyRate = vehicle.DailyRate.ToString("C0", culture),
+                status = GetVehicleStatusText(vehicle.Status),
+                statusBadge = GetVehicleStatusBadge(vehicle.Status),
+                actions = new
+                {
+                    detailUrl = Url.Action(nameof(Details), new { id = vehicle.Id }),
+                    editUrl = Url.Action(nameof(Edit), new { id = vehicle.Id })
+                }
+            })
+            .ToListAsync();
+
+        return Json(new
+        {
+            draw,
+            recordsTotal,
+            recordsFiltered,
+            data
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteAjax(Guid id)
+    {
+        var vehicle = await _context.Vehicles.FindAsync(id);
+        if (vehicle is null)
+        {
+            return NotFound(new { success = false, message = "Vehicle not found." });
+        }
+
+        var hasActiveBookings = await _context.Bookings.AnyAsync(booking =>
+            booking.VehicleId == id &&
+            (booking.Status == BookingStatus.Pending || booking.Status == BookingStatus.Confirmed) &&
+            booking.ReturnDateTime >= DateTime.UtcNow);
+
+        if (hasActiveBookings)
+        {
+            return BadRequest(new { success = false, message = "Cannot delete this vehicle because it has active bookings." });
+        }
+
+        _context.Vehicles.Remove(vehicle);
+        await _fileStorageService.DeleteVehicleGalleryAsync(id);
+        await _context.SaveChangesAsync();
+
+        return Json(new { success = true, message = "Vehicle deleted successfully." });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BulkDelete([FromForm] List<Guid> ids)
+    {
+        if (ids.Count == 0)
+        {
+            return BadRequest(new { success = false, message = "No vehicles selected." });
+        }
+
+        var vehicles = await _context.Vehicles.Where(vehicle => ids.Contains(vehicle.Id)).ToListAsync();
+        var skipped = 0;
+
+        foreach (var vehicle in vehicles)
+        {
+            var hasActiveBookings = await _context.Bookings.AnyAsync(booking =>
+                booking.VehicleId == vehicle.Id &&
+                (booking.Status == BookingStatus.Pending || booking.Status == BookingStatus.Confirmed) &&
+                booking.ReturnDateTime >= DateTime.UtcNow);
+
+            if (hasActiveBookings)
+            {
+                skipped++;
+                continue;
+            }
+
+            _context.Vehicles.Remove(vehicle);
+            await _fileStorageService.DeleteVehicleGalleryAsync(vehicle.Id);
+        }
+
+        await _context.SaveChangesAsync();
+
+        return Json(new
+        {
+            success = true,
+            message = skipped > 0
+                ? $"Deleted {vehicles.Count - skipped} vehicle(s). Skipped {skipped} active vehicle(s)."
+                : $"Deleted {vehicles.Count} vehicle(s)."
+        });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ExportCsv(string? searchTerm, Guid? categoryId, VehicleStatus? status)
     {
         var query = _context.Vehicles
             .AsNoTracking()
             .Include(vehicle => vehicle.VehicleCategory)
             .AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+        if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-            var keyword = filter.SearchTerm.Trim();
             query = query.Where(vehicle =>
-                (vehicle.Brand + " " + vehicle.Model).Contains(keyword) ||
-                vehicle.LicensePlate.Contains(keyword) ||
-                vehicle.Code.Contains(keyword));
+                vehicle.Code.Contains(searchTerm) ||
+                vehicle.Brand.Contains(searchTerm) ||
+                vehicle.Model.Contains(searchTerm) ||
+                vehicle.LicensePlate.Contains(searchTerm));
         }
 
-        if (filter.VehicleCategoryId.HasValue)
+        if (categoryId.HasValue)
         {
-            query = query.Where(vehicle => vehicle.VehicleCategoryId == filter.VehicleCategoryId.Value);
+            query = query.Where(vehicle => vehicle.VehicleCategoryId == categoryId.Value);
         }
 
-        if (!string.IsNullOrWhiteSpace(filter.Brand))
+        if (status.HasValue)
         {
-            query = query.Where(vehicle => vehicle.Brand == filter.Brand);
+            query = query.Where(vehicle => vehicle.Status == status.Value);
         }
 
-        if (filter.MinDailyRate.HasValue)
+        var vehicles = await query.OrderBy(vehicle => vehicle.Brand).ThenBy(vehicle => vehicle.Model).ToListAsync();
+
+        var csv = new StringBuilder();
+        csv.AppendLine("Code,Vehicle,Category,LicensePlate,DailyRate,Status");
+
+        foreach (var vehicle in vehicles)
         {
-            query = query.Where(vehicle => vehicle.DailyRate >= filter.MinDailyRate.Value);
+            csv.AppendLine(string.Join(",",
+                EscapeCsv(vehicle.Code),
+                EscapeCsv($"{vehicle.Brand} {vehicle.Model}"),
+                EscapeCsv(vehicle.VehicleCategory?.Name ?? string.Empty),
+                EscapeCsv(vehicle.LicensePlate),
+                EscapeCsv(vehicle.DailyRate.ToString("0.##", CultureInfo.InvariantCulture)),
+                EscapeCsv(GetVehicleStatusText(vehicle.Status))));
         }
 
-        if (filter.MaxDailyRate.HasValue)
-        {
-            query = query.Where(vehicle => vehicle.DailyRate <= filter.MaxDailyRate.Value);
-        }
-
-        if (filter.Status.HasValue)
-        {
-            query = query.Where(vehicle => vehicle.Status == filter.Status.Value);
-        }
-
-        var totalItems = await query.CountAsync();
-        var page = Math.Max(filter.Page, 1);
-        var pageSize = filter.PageSize <= 0 ? 10 : filter.PageSize;
-
-        var vehicles = await query
-            .OrderBy(vehicle => vehicle.Brand)
-            .ThenBy(vehicle => vehicle.Model)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        var model = new AdminVehicleIndexViewModel
-        {
-            Filter = filter,
-            Vehicles = new PagedResult<Vehicle>
-            {
-                Items = vehicles,
-                Page = page,
-                PageSize = pageSize,
-                TotalItems = totalItems
-            },
-            CategoryOptions = await BuildCategoryOptionsAsync(filter.VehicleCategoryId),
-            StatusOptions = BuildStatusOptions(filter.Status)
-        };
-
-        return View(model);
+        var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray();
+        var fileName = $"vehicles-{DateTime.UtcNow:yyyyMMddHHmmss}.csv";
+        return File(bytes, "text/csv", fileName);
     }
 
     [HttpGet]
@@ -386,5 +534,61 @@ public class VehicleController : Controller
             .OrderBy(path => path)
             .Select(path => $"/Content/Images/Vehicles/{vehicleId:N}/{Path.GetFileName(path)}")
             .ToList();
+    }
+
+    private static int ParseInt(string? raw, int fallback)
+    {
+        return int.TryParse(raw, out var value) ? value : fallback;
+    }
+
+    private static string EscapeCsv(string input)
+    {
+        if (input.Contains(',') || input.Contains('"') || input.Contains('\n'))
+        {
+            return $"\"{input.Replace("\"", "\"\"")}\"";
+        }
+
+        return input;
+    }
+
+    private static string GetVehicleStatusBadge(VehicleStatus status)
+    {
+        return status switch
+        {
+            VehicleStatus.Available => "success",
+            VehicleStatus.InUse => "info",
+            VehicleStatus.Maintenance => "warning",
+            VehicleStatus.Reserved => "primary",
+            VehicleStatus.Disabled => "secondary",
+            _ => "secondary"
+        };
+    }
+
+    private static string GetVehicleStatusText(VehicleStatus status)
+    {
+        var isEnglish = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("en", StringComparison.OrdinalIgnoreCase);
+
+        if (isEnglish)
+        {
+            return status switch
+            {
+                VehicleStatus.Available => "Available",
+                VehicleStatus.InUse => "In Use",
+                VehicleStatus.Maintenance => "Maintenance",
+                VehicleStatus.Reserved => "Reserved",
+                VehicleStatus.Disabled => "Disabled",
+                _ => status.ToString()
+            };
+        }
+
+        return status switch
+        {
+            VehicleStatus.Available => "Sẵn sàng",
+            VehicleStatus.InUse => "Đang thuê",
+            VehicleStatus.Maintenance => "Bảo dưỡng",
+            VehicleStatus.Reserved => "Đã giữ chỗ",
+            VehicleStatus.Disabled => "Ngưng hoạt động",
+            _ => status.ToString()
+        };
     }
 }

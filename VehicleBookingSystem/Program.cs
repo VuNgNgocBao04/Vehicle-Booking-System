@@ -1,25 +1,35 @@
 using System.Text;
+using System.Globalization;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using VehicleBookingSystem.Data;
 using VehicleBookingSystem.Models;
 using VehicleBookingSystem.Options;
+using VehicleBookingSystem.Resources;
 using VehicleBookingSystem.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
     .AddControllersWithViews()
+    .AddViewLocalization()
+    .AddDataAnnotationsLocalization(options =>
+    {
+        options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(ValidationMessages));
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = null;
     });
+
+builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
 
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
@@ -105,6 +115,24 @@ var applyMigrationsOnStartup = builder.Configuration.GetValue<bool>("StartupOpti
 var seedOnStartup = builder.Configuration.GetValue<bool>("StartupOptions:SeedOnStartup");
 
 var app = builder.Build();
+
+var supportedCultures = new[]
+{
+    new CultureInfo("vi-VN"),
+    new CultureInfo("en-US")
+};
+
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture("vi-VN"),
+    SupportedCultures = supportedCultures,
+    SupportedUICultures = supportedCultures,
+    RequestCultureProviders =
+    [
+        new CookieRequestCultureProvider(),
+        new AcceptLanguageHeaderRequestCultureProvider()
+    ]
+});
 
 if (applyMigrationsOnStartup || seedOnStartup)
 {

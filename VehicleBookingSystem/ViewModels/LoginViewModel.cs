@@ -1,15 +1,16 @@
 using System.ComponentModel.DataAnnotations;
+using VehicleBookingSystem.Resources;
 
 namespace VehicleBookingSystem.ViewModels;
 
 public class LoginViewModel
 {
-    [Required(ErrorMessage = "Email là bắt buộc.")]
-    [EmailAddress(ErrorMessage = "Email không đúng định dạng.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.Required))]
+    [EmailAddress(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.EmailInvalid))]
     [Display(Name = "Email")]
     public string Email { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Mật khẩu là bắt buộc.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.Required))]
     [DataType(DataType.Password)]
     [Display(Name = "Mật khẩu")]
     public string Password { get; set; } = string.Empty;

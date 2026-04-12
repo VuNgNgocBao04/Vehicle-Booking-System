@@ -1,46 +1,47 @@
 using System.ComponentModel.DataAnnotations;
+using VehicleBookingSystem.Resources;
 
 namespace VehicleBookingSystem.Contracts.Vehicles;
 
 public sealed class VehicleUpsertRequest
 {
-    [Required(ErrorMessage = "Mã xe là bắt buộc.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.CodeRequired))]
     [StringLength(20, MinimumLength = 3)]
-    [RegularExpression("^[A-Z0-9-]+$", ErrorMessage = "Mã xe chỉ gồm chữ in hoa, số và dấu gạch ngang.")]
+    [RegularExpression("^[A-Z0-9-]+$", ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.CodePattern))]
     public string Code { get; init; } = string.Empty;
 
-    [Required(ErrorMessage = "Mã danh mục xe là bắt buộc.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.VehicleCategoryRequired))]
     public Guid VehicleCategoryId { get; init; }
 
-    [Required(ErrorMessage = "Hãng xe là bắt buộc.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.BrandRequired))]
     [StringLength(100)]
     public string Brand { get; init; } = string.Empty;
 
-    [Required(ErrorMessage = "Mẫu xe là bắt buộc.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.ModelRequired))]
     [StringLength(100)]
     public string Model { get; init; } = string.Empty;
 
-    [Required(ErrorMessage = "Biển số là bắt buộc.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.LicensePlateRequired))]
     [StringLength(20)]
-    [RegularExpression("^[0-9]{2}[A-Z]-[0-9]{3}\\.[0-9]{2}$", ErrorMessage = "Biển số không đúng định dạng (VD: 30A-123.45).")]
+    [RegularExpression("^[0-9]{2}[A-Z]-[0-9]{3}\\.[0-9]{2}$", ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.LicensePlatePattern))]
     public string LicensePlate { get; init; } = string.Empty;
 
-    [Range(2, 60, ErrorMessage = "Số chỗ phải từ 2 đến 60.")]
+    [Range(2, 60, ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.SeatRange))]
     public int SeatCount { get; init; }
 
-    [Required(ErrorMessage = "Màu xe là bắt buộc.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.ColorRequired))]
     [StringLength(50)]
     public string Color { get; init; } = string.Empty;
 
-    [Required(ErrorMessage = "Loại hộp số là bắt buộc.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.TransmissionRequired))]
     [StringLength(50)]
     public string Transmission { get; init; } = string.Empty;
 
-    [Required(ErrorMessage = "Loại nhiên liệu là bắt buộc.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.FuelTypeRequired))]
     [StringLength(50)]
     public string FuelType { get; init; } = string.Empty;
 
-    [Range(100000, 100000000, ErrorMessage = "Giá thuê/ngày không hợp lệ.")]
+    [Range(100000, 100000000, ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.DailyRateRange))]
     public decimal DailyRate { get; init; }
 
     public string? Description { get; init; }

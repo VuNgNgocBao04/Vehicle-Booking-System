@@ -1,110 +1,247 @@
 @model VehicleBookingSystem.ViewModels.AdminVehicleIndexViewModel
+@inject Microsoft.Extensions.Localization.IStringLocalizer<VehicleBookingSystem.Resources.SharedResource> L
 
 @{
-    ViewData["Title"] = "Vehicle Management";
+    ViewData["Title"] = L["VehicleManagement"];
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h4 mb-0">Vehicle Management</h1>
-    <a class="btn btn-primary" asp-area="Admin" asp-controller="Vehicle" asp-action="Create">Add Vehicle</a>
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">@L["VehicleManagement"]</h1>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-primary btn-action" asp-area="Admin" asp-controller="Vehicle" asp-action="Create">@L["AddVehicle"]</a>
+        <button id="bulkDeleteBtn" class="btn btn-outline-danger btn-action" type="button" disabled>@L["BulkDelete"]</button>
+        <a id="exportCsvBtn" class="btn btn-outline-light btn-action" asp-action="ExportCsv">@L["ExportCsv"]</a>
+    </div>
 </div>
 
-@if (TempData["Message"] is string message)
-{
-    <div class="alert alert-success">@message</div>
-}
-@if (TempData["Error"] is string error)
-{
-    <div class="alert alert-danger">@error</div>
-}
-
-<form method="get" class="card card-body mb-3">
+<form id="vehicleFilterForm" class="admin-card p-3 mb-3">
+    @Html.AntiForgeryToken()
     <div class="row g-2">
-        <div class="col-md-3">
-            <input asp-for="Filter.SearchTerm" class="form-control" placeholder="Search name/plate/code" />
+        <div class="col-12 col-md-6 col-lg-4">
+            <input id="vehicleSearch" class="form-control" placeholder="@L["Search"] code/model/plate" />
         </div>
-        <div class="col-md-2">
-            <select asp-for="Filter.VehicleCategoryId" asp-items="Model.CategoryOptions" class="form-select">
+        <div class="col-6 col-md-3 col-lg-3">
+            <select id="vehicleCategoryFilter" class="form-select">
                 <option value="">All categories</option>
+                @foreach (var option in Model.CategoryOptions)
+                {
+                    <option value="@option.Value">@option.Text</option>
+                }
             </select>
         </div>
-        <div class="col-md-2">
-            <input asp-for="Filter.Brand" class="form-control" placeholder="Brand" />
-        </div>
-        <div class="col-md-2">
-            <input asp-for="Filter.MinDailyRate" class="form-control" placeholder="Min rate" />
-        </div>
-        <div class="col-md-2">
-            <input asp-for="Filter.MaxDailyRate" class="form-control" placeholder="Max rate" />
-        </div>
-        <div class="col-md-1">
-            <button class="btn btn-dark w-100" type="submit">Filter</button>
+        <div class="col-6 col-md-3 col-lg-3">
+            <select id="vehicleStatusFilter" class="form-select">
+                <option value="">@L["Status"]</option>
+                @foreach (var option in Model.StatusOptions)
+                {
+                    <option value="@option.Text">@option.Text</option>
+                }
+            </select>
         </div>
     </div>
 </form>
 
-<div class="table-responsive">
-    <table class="table table-striped align-middle">
+<div class="table-responsive admin-card p-3">
+    <table id="vehiclesTable" class="table table-striped table-hover align-middle w-100">
         <thead>
             <tr>
+                <th style="width: 40px;"><input type="checkbox" id="selectAllVehicles" /></th>
                 <th>Code</th>
                 <th>Vehicle</th>
                 <th>Category</th>
                 <th>Plate</th>
                 <th>Rate/Day</th>
-                <th>Status</th>
-                <th class="text-end">Actions</th>
+                <th>@L["Status"]</th>
+                <th class="text-end">@L["Action"]</th>
             </tr>
         </thead>
-        <tbody>
-            @if (!Model.Vehicles.Items.Any())
-            {
-                <tr>
-                    <td colspan="7" class="text-center text-muted">No vehicles found.</td>
-                </tr>
-            }
-            else
-            {
-                @foreach (var vehicle in Model.Vehicles.Items)
-                {
-                    <tr>
-                        <td>@vehicle.Code</td>
-                        <td>@vehicle.Brand @vehicle.Model</td>
-                        <td>@vehicle.VehicleCategory?.Name</td>
-                        <td>@vehicle.LicensePlate</td>
-                        <td>@vehicle.DailyRate.ToString("N0")</td>
-                        <td>@vehicle.Status</td>
-                        <td class="text-end">
-                            <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@vehicle.Id">Details</a>
-                            <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@vehicle.Id">Edit</a>
-                            <a class="btn btn-sm btn-outline-danger" asp-action="Delete" asp-route-id="@vehicle.Id">Delete</a>
-                        </td>
-                    </tr>
-                }
-            }
-        </tbody>
     </table>
+    <div id="vehicleEmptyState" class="empty-state d-none">
+        <p class="mb-0">@L["NoData"]</p>
+    </div>
 </div>
 
-@if (Model.Vehicles.TotalPages > 1)
-{
-    <nav>
-        <ul class="pagination">
-            @for (var i = 1; i <= Model.Vehicles.TotalPages; i++)
-            {
-                <li class="page-item @(Model.Vehicles.Page == i ? "active" : string.Empty)">
-                    <a class="page-link"
-                       asp-action="Index"
-                       asp-route-page="@i"
-                       asp-route-pageSize="@Model.Vehicles.PageSize"
-                       asp-route-searchTerm="@Model.Filter.SearchTerm"
-                       asp-route-vehicleCategoryId="@Model.Filter.VehicleCategoryId"
-                       asp-route-brand="@Model.Filter.Brand"
-                       asp-route-minDailyRate="@Model.Filter.MinDailyRate"
-                       asp-route-maxDailyRate="@Model.Filter.MaxDailyRate"
-                       asp-route-status="@Model.Filter.Status">@i</a>
-                </li>
+<div class="modal fade" id="vehicleDeleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@L["DeleteConfirmTitle"]</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">@L["DeleteConfirmContent"]</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@L["Cancel"]</button>
+                <button type="button" class="btn btn-danger" id="confirmVehicleDeleteBtn">@L["Delete"]</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.min.css" />
+    <script>
+        (function () {
+            const antiForgeryToken = document.querySelector('#vehicleFilterForm input[name="__RequestVerificationToken"]')?.value;
+            const searchInput = document.getElementById('vehicleSearch');
+            const categoryFilter = document.getElementById('vehicleCategoryFilter');
+            const statusFilter = document.getElementById('vehicleStatusFilter');
+            const selectAll = document.getElementById('selectAllVehicles');
+            const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+            const exportCsvBtn = document.getElementById('exportCsvBtn');
+            const deleteModalElement = document.getElementById('vehicleDeleteModal');
+            const deleteModal = deleteModalElement ? new bootstrap.Modal(deleteModalElement) : null;
+            const confirmDeleteBtn = document.getElementById('confirmVehicleDeleteBtn');
+            const emptyState = document.getElementById('vehicleEmptyState');
+            let deletingVehicleId = null;
+
+            const table = new DataTable('#vehiclesTable', {
+                processing: true,
+                serverSide: true,
+                responsive: true,
+                ajax: {
+                    url: '@Url.Action("TableData")',
+                    type: 'POST',
+                    headers: {
+                        'RequestVerificationToken': antiForgeryToken
+                    },
+                    data: function (d) {
+                        d.categoryId = categoryFilter?.value || '';
+                        d.status = statusFilter?.value || '';
+                    }
+                },
+                order: [[1, 'asc']],
+                columns: [
+                    {
+                        data: 'id',
+                        orderable: false,
+                        searchable: false,
+                        render: function (id) {
+                            return `<input type="checkbox" class="vehicle-row-checkbox" value="${id}" />`;
+                        }
+                    },
+                    { data: 'code' },
+                    { data: 'vehicleName' },
+                    { data: 'category' },
+                    { data: 'licensePlate' },
+                    { data: 'dailyRate' },
+                    {
+                        data: null,
+                        render: function (row) {
+                            return `<span class="badge text-bg-${row.statusBadge}">${row.status}</span>`;
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        className: 'text-end',
+                        render: function (row) {
+                            return `<div class="d-flex justify-content-end flex-wrap gap-1">
+                                <a class="btn btn-sm btn-outline-primary btn-action" href="${row.actions.detailUrl}">@L["Details"]</a>
+                                <a class="btn btn-sm btn-outline-secondary btn-action" href="${row.actions.editUrl}">@L["Edit"]</a>
+                                <button type="button" class="btn btn-sm btn-outline-danger btn-action js-delete-vehicle" data-id="${row.id}">@L["Delete"]</button>
+                            </div>`;
+                        }
+                    }
+                ],
+                language: {
+                    emptyTable: '@L["NoData"]'
+                }
+            });
+
+            function updateBulkDeleteState() {
+                const checked = document.querySelectorAll('.vehicle-row-checkbox:checked');
+                bulkDeleteBtn.disabled = checked.length === 0;
             }
-        </ul>
-    </nav>
+
+            function reloadTable() {
+                table.ajax.reload(function (json) {
+                    if (emptyState) {
+                        emptyState.classList.toggle('d-none', (json?.recordsFiltered ?? 0) > 0);
+                    }
+                    selectAll.checked = false;
+                    updateBulkDeleteState();
+                }, false);
+            }
+
+            const debounce = window.VehicleBookingApp?.debounce || ((callback) => callback);
+
+            searchInput?.addEventListener('input', debounce(function () {
+                table.search(this.value).draw();
+                exportCsvBtn.href = '@Url.Action("ExportCsv")' + '?searchTerm=' + encodeURIComponent(this.value);
+            }, 300));
+
+            categoryFilter?.addEventListener('change', reloadTable);
+            statusFilter?.addEventListener('change', reloadTable);
+
+            selectAll?.addEventListener('change', function () {
+                document.querySelectorAll('.vehicle-row-checkbox').forEach((checkbox) => {
+                    checkbox.checked = this.checked;
+                });
+                updateBulkDeleteState();
+            });
+
+            document.addEventListener('change', function (event) {
+                if (event.target.classList.contains('vehicle-row-checkbox')) {
+                    updateBulkDeleteState();
+                }
+            });
+
+            document.addEventListener('click', function (event) {
+                const button = event.target.closest('.js-delete-vehicle');
+                if (!button) {
+                    return;
+                }
+
+                deletingVehicleId = button.getAttribute('data-id');
+                deleteModal?.show();
+            });
+
+            confirmDeleteBtn?.addEventListener('click', function () {
+                if (!deletingVehicleId) {
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("DeleteAjax")',
+                    type: 'POST',
+                    headers: {
+                        'RequestVerificationToken': antiForgeryToken
+                    },
+                    data: { id: deletingVehicleId }
+                }).done(function () {
+                    deleteModal?.hide();
+                    reloadTable();
+                }).fail(function (xhr) {
+                    window.alert(xhr.responseJSON?.message || 'Delete failed.');
+                });
+            });
+
+            bulkDeleteBtn?.addEventListener('click', function () {
+                const selectedIds = Array.from(document.querySelectorAll('.vehicle-row-checkbox:checked')).map((item) => item.value);
+                if (!selectedIds.length) {
+                    return;
+                }
+
+                if (!window.confirm('@L["DeleteConfirmContent"]')) {
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("BulkDelete")',
+                    type: 'POST',
+                    headers: {
+                        'RequestVerificationToken': antiForgeryToken
+                    },
+                    data: selectedIds.map((id) => ({ name: 'ids', value: id }))
+                }).done(function () {
+                    reloadTable();
+                }).fail(function (xhr) {
+                    window.alert(xhr.responseJSON?.message || 'Bulk delete failed.');
+                });
+            });
+        })();
+    </script>
 }

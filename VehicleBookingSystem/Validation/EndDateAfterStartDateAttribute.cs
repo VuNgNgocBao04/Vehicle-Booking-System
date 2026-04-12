@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using VehicleBookingSystem.Resources;
 
 namespace VehicleBookingSystem.Validation;
 
@@ -12,7 +13,6 @@ public sealed class EndDateAfterStartDateAttribute : ValidationAttribute
     {
         _startDateProperty = startDateProperty;
         _endDateProperty = endDateProperty;
-        ErrorMessage = "Ngày kết thúc phải sau ngày bắt đầu.";
     }
 
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
@@ -23,7 +23,7 @@ public sealed class EndDateAfterStartDateAttribute : ValidationAttribute
 
         if (startProperty is null || endProperty is null)
         {
-            return new ValidationResult("Cấu hình xác thực ngày không hợp lệ.");
+            return new ValidationResult(ValidationMessages.DateRangeConfigInvalid);
         }
 
         var startValue = startProperty.GetValue(validationContext.ObjectInstance) as DateTime?;
@@ -36,6 +36,6 @@ public sealed class EndDateAfterStartDateAttribute : ValidationAttribute
 
         return endValue.Value > startValue.Value
             ? ValidationResult.Success
-            : new ValidationResult(ErrorMessage, [_endDateProperty]);
+            : new ValidationResult(ValidationMessages.DateRangeInvalid, [_endDateProperty]);
     }
 }
