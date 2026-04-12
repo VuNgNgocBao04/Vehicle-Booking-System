@@ -18,62 +18,67 @@ public class DashboardController : Controller
         _context = context;
     }
 
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
-        return View(BuildModel());
+        return View(await BuildModelAsync());
     }
 
-    private AdminDashboardViewModel BuildModel()
+    private async Task<AdminDashboardViewModel> BuildModelAsync()
     {
         var today = DateTime.UtcNow.Date;
         var monthStart = new DateTime(today.Year, today.Month, 1);
+        var sixMonthsStart = monthStart.AddMonths(-5);
 
-        var totalVehicles = _context.Vehicles.Count();
-        var bookingsToday = _context.Bookings.Count(item => item.CreatedAt >= today);
-        var revenueThisMonth = _context.Payments
+        var totalVehicles = await _context.Vehicles.CountAsync();
+        var bookingsToday = await _context.Bookings.CountAsync(item => item.CreatedAt >= today);
+        var revenueThisMonth = await _context.Payments
             .Where(item => item.Status == PaymentStatus.Paid && item.PaidAt.HasValue && item.PaidAt.Value >= monthStart)
             .Select(item => (decimal?)item.PaidAmount)
-            .Sum() ?? 0;
-        var monthlyBookings = _context.Bookings
+            .SumAsync() ?? 0;
+
+        var monthlyBookings = await _context.Bookings
             .AsNoTracking()
             .Where(item => item.CreatedAt >= monthStart)
-            .Select(item => new { item.UserId, item.CreatedAt })
-            .ToList();
+            .Select(item => item.UserId)
+            .Distinct()
+            .ToListAsync();
 
-        var historicalUsers = _context.Bookings
+        var historicalUsers = await _context.Bookings
             .AsNoTracking()
             .Where(item => item.CreatedAt < monthStart)
             .Select(item => item.UserId)
             .Distinct()
-            .ToHashSet();
+            .ToHashSetAsync();
 
-        var newCustomersThisMonth = monthlyBookings
-            .Select(item => item.UserId)
-            .Distinct()
-            .Count(userId => !historicalUsers.Contains(userId));
+        var newCustomersThisMonth = monthlyBookings.Count(userId => !historicalUsers.Contains(userId));
+
+        var revenueByMonthRaw = await _context.Payments
+            .AsNoTracking()
+            .Where(item => item.Status == PaymentStatus.Paid && item.PaidAt.HasValue && item.PaidAt.Value >= sixMonthsStart)
+            .GroupBy(item => new { item.PaidAt!.Value.Year, item.PaidAt!.Value.Month })
+            .Select(group => new
+            {
+                group.Key.Year,
+                group.Key.Month,
+                Value = group.Sum(item => item.PaidAmount)
+            })
+            .ToDictionaryAsync(item => (item.Year, item.Month), item => item.Value);
 
         var revenueByMonth = Enumerable.Range(0, 6)
-            .Select(offset => monthStart.AddMonths(-5 + offset))
+            .Select(offset => sixMonthsStart.AddMonths(offset))
             .Select(start => new AdminMetricPointViewModel
             {
                 Label = start.ToString("MM/yyyy"),
-                Value = _context.Payments
-                    .Where(item => item.Status == PaymentStatus.Paid &&
-                                   item.PaidAt.HasValue &&
-                                   item.PaidAt.Value.Year == start.Year &&
-                                   item.PaidAt.Value.Month == start.Month)
-                    .Select(item => (decimal?)item.PaidAmount)
-                    .Sum() ?? 0
+                Value = revenueByMonthRaw.TryGetValue((start.Year, start.Month), out var value) ? value : 0
             })
             .ToList();
 
-        var bookingByCategory = _context.Bookings
+        var bookingByCategory = await _context.Bookings
             .AsNoTracking()
-            .Include(item => item.Vehicle)
-            .ThenInclude(item => item!.VehicleCategory)
             .Where(item => item.CreatedAt >= monthStart)
-            .AsEnumerable()
-            .GroupBy(item => item.Vehicle?.VehicleCategory?.Name ?? "Unknown")
+            .GroupBy(item => item.Vehicle != null && item.Vehicle.VehicleCategory != null
+                ? item.Vehicle.VehicleCategory.Name
+                : "Unknown")
             .Select(group => new AdminPiePointViewModel
             {
                 Label = group.Key,
@@ -81,9 +86,9 @@ public class DashboardController : Controller
             })
             .OrderByDescending(item => item.Value)
             .Take(6)
-            .ToList();
+            .ToListAsync();
 
-        var recentPending = _context.Bookings
+        var recentPending = await _context.Bookings
             .AsNoTracking()
             .Include(item => item.User)
             .Include(item => item.Vehicle)
@@ -99,9 +104,9 @@ public class DashboardController : Controller
                 PickupDateTime = item.PickupDateTime,
                 TotalAmount = item.TotalAmount
             })
-            .ToList();
+            .ToListAsync();
 
-        var maintenanceVehicles = _context.Vehicles
+        var maintenanceVehicles = await _context.Vehicles
             .AsNoTracking()
             .Where(item => item.Status == VehicleStatus.Maintenance)
             .OrderBy(item => item.Brand)
@@ -113,7 +118,7 @@ public class DashboardController : Controller
                 VehicleName = $"{item.Brand} {item.Model}",
                 LicensePlate = item.LicensePlate
             })
-            .ToList();
+            .ToListAsync();
 
         return new AdminDashboardViewModel
         {

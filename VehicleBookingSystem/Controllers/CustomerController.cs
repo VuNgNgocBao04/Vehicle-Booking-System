@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -13,10 +14,12 @@ namespace VehicleBookingSystem.Controllers;
 public class CustomerController : Controller
 {
     private readonly ApplicationDbContext _context;
+    private readonly IWebHostEnvironment _environment;
 
-    public CustomerController(ApplicationDbContext context)
+    public CustomerController(ApplicationDbContext context, IWebHostEnvironment environment)
     {
         _context = context;
+        _environment = environment;
     }
 
     [HttpGet]
@@ -259,7 +262,7 @@ public class CustomerController : Controller
         return string.Equals(viewMode, "list", StringComparison.OrdinalIgnoreCase) ? "list" : "grid";
     }
 
-    private static IReadOnlyList<string> BuildGalleryUrls(Vehicle vehicle)
+    private IReadOnlyList<string> BuildGalleryUrls(Vehicle vehicle)
     {
         var urls = new List<string>();
 
@@ -269,7 +272,8 @@ public class CustomerController : Controller
         }
 
         var relativeFolder = Path.Combine("Content", "Images", "Vehicles", vehicle.Id.ToString("N"));
-        var absoluteFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", relativeFolder);
+        var webRootPath = _environment.WebRootPath ?? Path.Combine(AppContext.BaseDirectory, "wwwroot");
+        var absoluteFolder = Path.Combine(webRootPath, relativeFolder);
         if (Directory.Exists(absoluteFolder))
         {
             urls.AddRange(Directory
@@ -281,3 +285,4 @@ public class CustomerController : Controller
         return urls.Distinct().Take(8).ToList();
     }
 }
+
