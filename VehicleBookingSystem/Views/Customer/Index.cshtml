@@ -4,76 +4,138 @@
     ViewData["Title"] = "Browse Vehicles";
 }
 
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h3 mb-0">Browse Vehicles</h1>
+<div class="py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <h1 class="h3 mb-0">Vehicle Listing</h1>
         <a class="btn btn-outline-secondary" asp-controller="Booking" asp-action="MyBookings">My Bookings</a>
     </div>
 
-    @if (TempData["Message"] is string message)
-    {
-        <div class="alert alert-info">@message</div>
-    }
+    <div class="row g-3">
+        <aside class="col-lg-3">
+            <form id="vehicleFilterForm" method="get" class="card card-body border-0 shadow-sm">
+                <input asp-for="Filter.Page" type="hidden" />
+                <input asp-for="Filter.PageSize" type="hidden" />
+                <input asp-for="Filter.ViewMode" type="hidden" id="viewModeInput" />
 
-    <form id="vehicleFilterForm" method="get" class="card card-body mb-3">
-        <div class="row g-2">
-            <div class="col-md-3">
-                <input asp-for="Filter.SearchTerm" class="form-control" placeholder="Search name or plate" />
-            </div>
-            <div class="col-md-2">
-                <select asp-for="Filter.VehicleCategoryId" asp-items="Model.CategoryOptions" class="form-select">
-                    <option value="">All categories</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <input asp-for="Filter.Brand" class="form-control" placeholder="Brand" />
-            </div>
-            <div class="col-md-2">
-                <input asp-for="Filter.MinDailyRate" class="form-control" placeholder="Min price" />
-            </div>
-            <div class="col-md-2">
-                <input asp-for="Filter.MaxDailyRate" class="form-control" placeholder="Max price" />
-            </div>
-            <div class="col-md-1">
-                <button type="submit" class="btn btn-primary w-100">Go</button>
-            </div>
-        </div>
-    </form>
+                <div class="mb-3 position-relative">
+                    <label asp-for="Filter.SearchTerm" class="form-label">Search</label>
+                    <input asp-for="Filter.SearchTerm" id="vehicleSearchInput" class="form-control" placeholder="Brand, model, plate" autocomplete="off" />
+                    <div id="vehicleSearchSuggest" class="list-group position-absolute w-100 shadow-sm" style="z-index: 15;"></div>
+                </div>
 
-    <div id="loadingSpinner" class="text-center py-3 d-none">
-        <div class="spinner-border text-primary" role="status"></div>
+                <div class="mb-3">
+                    <label asp-for="Filter.VehicleCategoryId" class="form-label">Category</label>
+                    <select asp-for="Filter.VehicleCategoryId" asp-items="Model.CategoryOptions" class="form-select">
+                        <option value="">All categories</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Filter.Brand" class="form-label">Brand</label>
+                    <select asp-for="Filter.Brand" class="form-select">
+                        <option value="">All brands</option>
+                        @foreach (var brand in Model.BrandOptions)
+                        {
+                            if (brand == Model.Filter.Brand)
+                            {
+                                <option value="@brand" selected>@brand</option>
+                            }
+                            else
+                            {
+                                <option value="@brand">@brand</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Price range (VND/day)</label>
+                    <div class="d-flex gap-2">
+                        <input asp-for="Filter.MinDailyRate" class="form-control" placeholder="Min" inputmode="numeric" />
+                        <input asp-for="Filter.MaxDailyRate" class="form-control" placeholder="Max" inputmode="numeric" />
+                    </div>
+                    <div class="small text-muted mt-1">@Model.PriceRangeMin.ToString("N0") - @Model.PriceRangeMax.ToString("N0")</div>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Filter.SeatCount" class="form-label">Seats</label>
+                    <select asp-for="Filter.SeatCount" class="form-select">
+                        <option value="">Any</option>
+                        <option value="4">4+</option>
+                        <option value="5">5+</option>
+                        <option value="7">7+</option>
+                        <option value="16">16+</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Filter.SortBy" class="form-label">Sort by</label>
+                    <select asp-for="Filter.SortBy" class="form-select">
+                        <option value="priceAsc">Price: low to high</option>
+                        <option value="priceDesc">Price: high to low</option>
+                        <option value="newest">Newest</option>
+                        <option value="popular">Most popular</option>
+                    </select>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary">Apply filters</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
+                </div>
+            </form>
+
+            @if (Model.SearchHistory.Any())
+            {
+                <div class="card card-body border-0 shadow-sm mt-3">
+                    <h2 class="h6">Recent Search</h2>
+                    <ul class="list-group list-group-flush small">
+                        @foreach (var item in Model.SearchHistory.Take(5))
+                        {
+                            <li class="list-group-item px-0">
+                                <div>@(string.IsNullOrWhiteSpace(item.Keyword) ? "(No keyword)" : item.Keyword)</div>
+                                <div class="text-muted">@item.At.ToLocalTime().ToString("dd/MM HH:mm")</div>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+        </aside>
+
+        <section class="col-lg-9">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="small text-muted">@Model.Vehicles.TotalItems xe phù hợp</div>
+                <div class="btn-group" role="group" aria-label="View mode">
+                    <button type="button" class="btn btn-outline-secondary btn-sm js-view-toggle @(Model.Filter.ViewMode == "grid" ? "active" : string.Empty)" data-view="grid">Grid</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm js-view-toggle @(Model.Filter.ViewMode == "list" ? "active" : string.Empty)" data-view="list">List</button>
+                </div>
+            </div>
+
+            <div id="loadingSpinner" class="text-center py-3 d-none">
+                <div class="spinner-border text-primary" role="status"></div>
+            </div>
+
+            <div id="vehicleListContainer">
+                <partial name="_VehicleList" model="Model" />
+            </div>
+        </section>
     </div>
-
-    <div id="vehicleListContainer">
-        <partial name="_VehicleList" model="Model" />
-    </div>
-
-    @if (Model.SearchHistory.Any())
-    {
-        <div class="mt-4">
-            <h2 class="h6">Recent Search History (Session)</h2>
-            <ul class="list-group">
-                @foreach (var item in Model.SearchHistory.Take(5))
-                {
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span>@(string.IsNullOrWhiteSpace(item.Keyword) ? "(No keyword)" : item.Keyword) - @item.FilterSummary</span>
-                        <small class="text-muted">@item.At.ToLocalTime().ToString("dd/MM HH:mm")</small>
-                    </li>
-                }
-            </ul>
-        </div>
-    }
 </div>
 
 @section Scripts {
     <script>
         (function () {
+            const app = window.VehicleBookingApp;
             const form = document.getElementById("vehicleFilterForm");
             const container = document.getElementById("vehicleListContainer");
             const spinner = document.getElementById("loadingSpinner");
+            const suggest = document.getElementById("vehicleSearchSuggest");
+            const searchInput = document.getElementById("vehicleSearchInput");
+            const viewModeInput = document.getElementById("viewModeInput");
 
-            async function fetchVehicles(url) {
+            async function fetchVehicles(url, pushState = true) {
                 spinner.classList.remove("d-none");
+                app && app.showLoading();
+
                 try {
                     const response = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
                     if (!response.ok) {
@@ -84,10 +146,15 @@
                     container.innerHTML = html;
                     bindPagination();
                     bindCommentButtons();
+
+                    if (pushState) {
+                        window.history.pushState({}, "", url);
+                    }
                 } catch (error) {
                     container.innerHTML = '<div class="alert alert-danger">' + error.message + '</div>';
                 } finally {
                     spinner.classList.add("d-none");
+                    app && app.hideLoading();
                 }
             }
 
@@ -116,10 +183,55 @@
                 });
             }
 
+            function fetchSuggestions() {
+                const value = (searchInput.value || "").trim();
+                if (value.length < 2) {
+                    suggest.innerHTML = "";
+                    return;
+                }
+
+                fetch(`/Customer/SearchSuggestions?term=${encodeURIComponent(value)}`)
+                    .then(res => res.json())
+                    .then(items => {
+                        suggest.innerHTML = "";
+                        (items || []).forEach(item => {
+                            const button = document.createElement("button");
+                            button.type = "button";
+                            button.className = "list-group-item list-group-item-action";
+                            button.textContent = item;
+                            button.addEventListener("click", () => {
+                                searchInput.value = item;
+                                suggest.innerHTML = "";
+                                form.dispatchEvent(new Event("submit", { cancelable: true }));
+                            });
+                            suggest.appendChild(button);
+                        });
+                    })
+                    .catch(() => {
+                        suggest.innerHTML = "";
+                    });
+            }
+
             form.addEventListener("submit", event => {
                 event.preventDefault();
                 const params = new URLSearchParams(new FormData(form));
+                params.set("page", "1");
                 fetchVehicles(`/Customer/Index?${params.toString()}`);
+            });
+
+            document.querySelectorAll(".js-view-toggle").forEach(button => {
+                button.addEventListener("click", () => {
+                    document.querySelectorAll(".js-view-toggle").forEach(item => item.classList.remove("active"));
+                    button.classList.add("active");
+                    viewModeInput.value = button.dataset.view;
+                    form.dispatchEvent(new Event("submit", { cancelable: true }));
+                });
+            });
+
+            searchInput.addEventListener("input", (app && app.debounce ? app.debounce(fetchSuggestions, 260) : fetchSuggestions));
+
+            window.addEventListener("popstate", () => {
+                fetchVehicles(window.location.pathname + window.location.search, false);
             });
 
             bindPagination();

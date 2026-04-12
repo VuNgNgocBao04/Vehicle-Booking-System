@@ -1,6 +1,7 @@
 using System.Data;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -14,10 +15,12 @@ namespace VehicleBookingSystem.Controllers;
 public class BookingController : Controller
 {
     private readonly ApplicationDbContext _context;
+    private readonly UserManager<AppUser> _userManager;
 
-    public BookingController(ApplicationDbContext context)
+    public BookingController(ApplicationDbContext context, UserManager<AppUser> userManager)
     {
         _context = context;
+        _userManager = userManager;
     }
 
     [HttpGet]
@@ -46,6 +49,23 @@ public class BookingController : Controller
             PaymentMethod = draft?.PaymentMethod ?? PaymentMethod.Cash,
             PaymentMethodOptions = BuildPaymentMethodOptions(PaymentMethod.Cash)
         };
+
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user is not null)
+            {
+                if (string.IsNullOrWhiteSpace(model.PickupLocation) && !string.IsNullOrWhiteSpace(user.Address))
+                {
+                    model.PickupLocation = user.Address;
+                }
+
+                if (string.IsNullOrWhiteSpace(model.DropoffLocation) && !string.IsNullOrWhiteSpace(user.Address))
+                {
+                    model.DropoffLocation = user.Address;
+                }
+            }
+        }
 
         model.EstimatedTotalAmount = CalculateTotal(vehicle.DailyRate, model.PickupDateTime, model.ReturnDateTime);
         model.PaymentMethodOptions = BuildPaymentMethodOptions(model.PaymentMethod);
@@ -157,7 +177,30 @@ public class BookingController : Controller
 
         HttpContext.Session.Remove(SessionKeys.PendingBookingDraft);
         TempData["Message"] = "Booking created successfully.";
-        return RedirectToAction(nameof(MyBookings));
+        return RedirectToAction(nameof(Success), new { id = booking.Id });
+    }
+
+    [HttpGet]
+    [Authorize(Roles = "Customer")]
+    public async Task<IActionResult> Success(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId) || !Guid.TryParse(userId, out var parsedUserId))
+        {
+            return Forbid();
+        }
+
+        var booking = await _context.Bookings
+            .AsNoTracking()
+            .Include(item => item.Vehicle)
+            .FirstOrDefaultAsync(item => item.Id == id && item.UserId == parsedUserId);
+
+        if (booking is null)
+        {
+            return NotFound();
+        }
+
+        return View(booking);
     }
 
     [HttpGet]
@@ -213,6 +256,30 @@ public class BookingController : Controller
         };
 
         return View(model);
+    }
+
+    [HttpGet]
+    [Authorize(Roles = "Customer")]
+    public async Task<IActionResult> Details(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId) || !Guid.TryParse(userId, out var parsedUserId))
+        {
+            return Forbid();
+        }
+
+        var booking = await _context.Bookings
+            .AsNoTracking()
+            .Include(item => item.Vehicle)
+            .Include(item => item.Payment)
+            .FirstOrDefaultAsync(item => item.Id == id && item.UserId == parsedUserId);
+
+        if (booking is null)
+        {
+            return NotFound();
+        }
+
+        return View(booking);
     }
 
     [HttpPost]

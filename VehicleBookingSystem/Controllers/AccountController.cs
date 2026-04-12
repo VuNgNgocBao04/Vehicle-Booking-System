@@ -190,6 +190,125 @@ public class AccountController : Controller
         return View();
     }
 
+    [HttpGet]
+    [Authorize]
+    public async Task<IActionResult> Profile()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null)
+        {
+            return Challenge();
+        }
+
+        var model = new ProfileViewModel
+        {
+            Update = new ProfileUpdateViewModel
+            {
+                FullName = user.FullName,
+                PhoneNumber = user.PhoneNumber,
+                Address = user.Address,
+                DateOfBirth = user.DateOfBirth,
+                CurrentAvatarUrl = user.AvatarUrl
+            }
+        };
+
+        return View(model);
+    }
+
+    [HttpPost]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Profile(ProfileViewModel model)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null)
+        {
+            return Challenge();
+        }
+
+        if (!TryValidateModel(model.Update, nameof(ProfileViewModel.Update)))
+        {
+            model.Update.CurrentAvatarUrl = user.AvatarUrl;
+            return View(model);
+        }
+
+        user.FullName = model.Update.FullName.Trim();
+        user.PhoneNumber = model.Update.PhoneNumber?.Trim();
+        user.Address = model.Update.Address?.Trim();
+        user.DateOfBirth = model.Update.DateOfBirth;
+
+        if (model.Update.AvatarFile is not null)
+        {
+            try
+            {
+                user.AvatarUrl = await _fileStorageService.SaveAvatarAsync(user.Id, model.Update.AvatarFile);
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(nameof(ProfileViewModel.Update) + ".AvatarFile", ex.Message);
+                model.Update.CurrentAvatarUrl = user.AvatarUrl;
+                return View(model);
+            }
+        }
+
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError(string.Empty, error.Description);
+            }
+
+            model.Update.CurrentAvatarUrl = user.AvatarUrl;
+            return View(model);
+        }
+
+        await StoreUserSessionAsync(user);
+        TempData["Message"] = "Cập nhật hồ sơ thành công.";
+        return RedirectToAction(nameof(Profile));
+    }
+
+    [HttpPost]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangePassword(ProfileViewModel model)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null)
+        {
+            return Challenge();
+        }
+
+        model.Update = new ProfileUpdateViewModel
+        {
+            FullName = user.FullName,
+            PhoneNumber = user.PhoneNumber,
+            Address = user.Address,
+            DateOfBirth = user.DateOfBirth,
+            CurrentAvatarUrl = user.AvatarUrl
+        };
+
+        if (!TryValidateModel(model.ChangePassword, nameof(ProfileViewModel.ChangePassword)))
+        {
+            return View("Profile", model);
+        }
+
+        var result = await _userManager.ChangePasswordAsync(user, model.ChangePassword.CurrentPassword, model.ChangePassword.NewPassword);
+        if (!result.Succeeded)
+        {
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError(string.Empty, error.Description);
+            }
+
+            return View("Profile", model);
+        }
+
+        await _signInManager.RefreshSignInAsync(user);
+        TempData["Message"] = "Đổi mật khẩu thành công.";
+        return RedirectToAction(nameof(Profile));
+    }
+
     private async Task StoreUserSessionAsync(AppUser user)
     {
         var roles = await _userManager.GetRolesAsync(user);

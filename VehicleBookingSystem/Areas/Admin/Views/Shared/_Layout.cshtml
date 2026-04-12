@@ -6,12 +6,17 @@
     <title>@ViewData["Title"] - Vehicle Booking Admin</title>
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/VehicleBookingSystem.styles.css" asp-append-version="true" />
 </head>
 <body class="admin-layout">
+    @{
+        var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+        var pageTitle = ViewData["Title"]?.ToString() ?? "Admin";
+    }
     <div class="admin-app">
-        <aside class="admin-sidebar">
+        <aside class="admin-sidebar" id="adminSidebar">
             <div class="admin-brand">
                 <div class="admin-brand-mark"></div>
                 <div>
@@ -21,21 +26,25 @@
             </div>
 
             <nav class="nav flex-column">
-                <a class="nav-link" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
-                    <span>Overview</span>
+                <a class="nav-link @(currentController == "Dashboard" ? "active" : string.Empty)" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
+                    <span>Dashboard</span>
                     <span>01</span>
                 </a>
-                <a class="nav-link" asp-area="Admin" asp-controller="Vehicle" asp-action="Index">
-                    <span>Fleet</span>
+                <a class="nav-link @(currentController == "Vehicle" ? "active" : string.Empty)" asp-area="Admin" asp-controller="Vehicle" asp-action="Index">
+                    <span>Xe</span>
                     <span>02</span>
                 </a>
-                <a class="nav-link" asp-area="Admin" asp-controller="Booking" asp-action="Index">
-                    <span>Bookings</span>
+                <a class="nav-link @(currentController == "Booking" ? "active" : string.Empty)" asp-area="Admin" asp-controller="Booking" asp-action="Index">
+                    <span>Đặt xe</span>
                     <span>03</span>
                 </a>
                 <a class="nav-link" asp-area="" asp-controller="Customer" asp-action="Index">
-                    <span>Users</span>
+                    <span>Khách hàng</span>
                     <span>04</span>
+                </a>
+                <a class="nav-link" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
+                    <span>Báo cáo</span>
+                    <span>05</span>
                 </a>
                 <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">
                     <span>User site</span>
@@ -47,8 +56,9 @@
         <div class="admin-main">
             <header class="admin-topbar">
                 <div>
+                    <button class="btn btn-outline-light btn-sm d-lg-none mb-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#adminSidebarCanvas" aria-controls="adminSidebarCanvas"><i class="fa-solid fa-bars"></i></button>
                     <div class="text-uppercase small text-white-50">Control panel</div>
-                    <div class="h4 mb-0">Operations dashboard</div>
+                    <div class="h4 mb-0">@pageTitle</div>
                 </div>
                 <div class="d-flex align-items-center gap-3">
                     <span class="badge rounded-pill text-bg-success">System healthy</span>
@@ -60,9 +70,49 @@
             </header>
 
             <main class="admin-content">
+                <nav aria-label="breadcrumb" class="mb-3">
+                    <ol class="breadcrumb app-breadcrumb admin-breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Admin</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">@pageTitle</li>
+                    </ol>
+                </nav>
                 @RenderBody()
             </main>
         </div>
+    </div>
+
+    <div class="offcanvas offcanvas-start text-bg-dark" tabindex="-1" id="adminSidebarCanvas" aria-labelledby="adminSidebarCanvasLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="adminSidebarCanvasLabel">Admin Menu</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <a class="sidebar-link d-block mb-2" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Dashboard</a>
+            <a class="sidebar-link d-block mb-2" asp-area="Admin" asp-controller="Vehicle" asp-action="Index">Xe</a>
+            <a class="sidebar-link d-block mb-2" asp-area="Admin" asp-controller="Booking" asp-action="Index">Đặt xe</a>
+            <a class="sidebar-link d-block mb-2" asp-area="" asp-controller="Customer" asp-action="Index">Khách hàng</a>
+            <a class="sidebar-link d-block mb-2" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Báo cáo</a>
+        </div>
+    </div>
+
+    <div id="globalLoadingOverlay" class="global-loading-overlay d-none" aria-hidden="true">
+        <div class="spinner-border text-light" role="status"></div>
+        <div class="mt-2">Loading...</div>
+    </div>
+
+    <div id="appToastContainer" class="toast-container position-fixed top-0 end-0 p-3">
+        @if (TempData["Message"] is string toastMessage)
+        {
+            <div class="toast text-bg-success border-0" role="alert" data-bs-delay="3500" data-autoshow="true">
+                <div class="d-flex"><div class="toast-body">@toastMessage</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>
+            </div>
+        }
+        @if (TempData["Error"] is string toastError)
+        {
+            <div class="toast text-bg-danger border-0" role="alert" data-bs-delay="4500" data-autoshow="true">
+                <div class="d-flex"><div class="toast-body">@toastError</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>
+            </div>
+        }
     </div>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
