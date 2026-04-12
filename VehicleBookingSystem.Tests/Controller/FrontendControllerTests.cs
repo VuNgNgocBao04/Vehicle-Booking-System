@@ -38,12 +38,16 @@ public class FrontendControllerTests
     }
 
     [Fact]
-    public void Admin_Dashboard_Index_ReturnsDashboardModel()
+    public async Task Admin_Dashboard_Index_ReturnsDashboardModel()
     {
         using var context = BuildContext(nameof(Admin_Dashboard_Index_ReturnsDashboardModel));
-        var controller = new DashboardController(context);
+        var dashboardService = new Mock<IAdminDashboardService>();
+        dashboardService
+            .Setup(service => service.BuildAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AdminDashboardViewModel());
+        var controller = new DashboardController(dashboardService.Object);
 
-        var result = controller.Index();
+        var result = await controller.Index();
 
         var view = Assert.IsType<ViewResult>(result);
         Assert.IsType<AdminDashboardViewModel>(view.Model);

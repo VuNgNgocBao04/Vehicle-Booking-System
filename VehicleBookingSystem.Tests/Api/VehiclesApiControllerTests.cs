@@ -22,22 +22,24 @@ public class VehiclesApiControllerTests
             BuildVehicle("VH-002", "30A-123.46", 700000));
         await context.SaveChangesAsync();
 
-        var controller = new VehiclesController(context, new HtmlSanitizerService(), BuildEnvironment());
+        var controller = new VehiclesController(context, new HtmlSanitizerService(), BuildEnvironment(), new ApiProblemDetailsFactory());
 
         var action = await controller.GetVehicles(page: 1, pageSize: 1, category: null, minPrice: null, maxPrice: null);
 
         var ok = Assert.IsType<OkObjectResult>(action.Result);
-        var payload = Assert.IsType<PagedResponse<VehicleResponse>>(ok.Value);
-        Assert.Equal(2, payload.TotalItems);
-        Assert.Equal(1, payload.Page);
-        Assert.Equal(1, payload.PageSize);
+        var envelope = Assert.IsType<ApiResponse<PagedResponse<VehicleResponse>>>(ok.Value);
+        Assert.True(envelope.Success);
+        Assert.NotNull(envelope.Data);
+        Assert.Equal(2, envelope.Data!.TotalItems);
+        Assert.Equal(1, envelope.Data.Page);
+        Assert.Equal(1, envelope.Data.PageSize);
     }
 
     [Fact]
     public async Task CheckAvailability_ReturnsBadRequest_WhenEndDateBeforeStartDate()
     {
         await using var context = BuildContext(nameof(CheckAvailability_ReturnsBadRequest_WhenEndDateBeforeStartDate));
-        var controller = new VehiclesController(context, new HtmlSanitizerService(), BuildEnvironment());
+        var controller = new VehiclesController(context, new HtmlSanitizerService(), BuildEnvironment(), new ApiProblemDetailsFactory());
 
         var action = await controller.CheckAvailability(Guid.NewGuid(), DateTime.UtcNow.Date.AddDays(2), DateTime.UtcNow.Date.AddDays(1));
 
