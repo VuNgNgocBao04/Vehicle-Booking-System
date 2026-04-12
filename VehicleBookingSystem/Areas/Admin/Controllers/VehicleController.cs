@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Text;
+using VehicleBookingSystem.Contracts.Common;
 using VehicleBookingSystem.Data;
 using VehicleBookingSystem.Models;
 using VehicleBookingSystem.ViewModels;
@@ -134,10 +135,10 @@ public class VehicleController : Controller
         var result = await _vehicleService.DeleteAsync(id);
         if (!result.Succeeded)
         {
-            return BadRequest(new { success = false, message = result.ErrorMessage ?? "Unable to delete vehicle." });
+            return BadRequest(ApiResponse<string>.Fail(result.ErrorMessage ?? "Unable to delete vehicle."));
         }
 
-        return Json(new { success = true, message = "Vehicle deleted successfully." });
+        return Json(ApiResponse<string>.Ok("Vehicle deleted successfully."));
     }
 
     [HttpPost]
@@ -146,7 +147,7 @@ public class VehicleController : Controller
     {
         if (ids.Count == 0)
         {
-            return BadRequest(new { success = false, message = "No vehicles selected." });
+            return BadRequest(ApiResponse<string>.Fail("No vehicles selected."));
         }
 
         var skipped = 0;
@@ -160,13 +161,9 @@ public class VehicleController : Controller
             }
         }
 
-        return Json(new
-        {
-            success = true,
-            message = skipped > 0
-                ? $"Deleted {ids.Count - skipped} vehicle(s). Skipped {skipped} active vehicle(s)."
-                : $"Deleted {ids.Count} vehicle(s)."
-        });
+        return Json(ApiResponse<string>.Ok(skipped > 0
+            ? $"Deleted {ids.Count - skipped} vehicle(s). Skipped {skipped} active vehicle(s)."
+            : $"Deleted {ids.Count} vehicle(s)."));
     }
 
     [HttpGet]

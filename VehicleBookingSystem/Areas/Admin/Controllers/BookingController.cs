@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Data;
 using System.Globalization;
+using VehicleBookingSystem.Contracts.Common;
 using VehicleBookingSystem.Data;
 using VehicleBookingSystem.Models;
 using VehicleBookingSystem.ViewModels;
@@ -142,7 +143,7 @@ public class BookingController : Controller
 
         if (booking is null)
         {
-            return NotFound(new { success = false, message = "Booking not found." });
+            return NotFound(ApiResponse<object>.Fail("Booking not found."));
         }
 
         var history = booking.StatusHistories
@@ -156,28 +157,24 @@ public class BookingController : Controller
             })
             .ToList();
 
-        return Json(new
+        return Json(ApiResponse<object>.Ok(new
         {
-            success = true,
-            data = new
-            {
-                id = booking.Id,
-                bookingCode = booking.BookingCode,
-                customerName = booking.User?.FullName,
-                customerEmail = booking.User?.Email,
-                customerPhone = booking.User?.PhoneNumber,
-                vehicleName = booking.Vehicle != null ? booking.Vehicle.Brand + " " + booking.Vehicle.Model : "-",
-                plate = booking.Vehicle?.LicensePlate,
-                pickupLocation = booking.PickupLocation,
-                dropoffLocation = booking.DropoffLocation,
-                pickupDate = booking.PickupDateTime.ToString("g", CultureInfo.CurrentCulture),
-                returnDate = booking.ReturnDateTime.ToString("g", CultureInfo.CurrentCulture),
-                totalAmount = booking.TotalAmount.ToString("C0", CultureInfo.CurrentCulture),
-                status = booking.Status.ToString(),
-                paymentStatus = booking.Payment?.Status.ToString() ?? "N/A",
-                history
-            }
-        });
+            id = booking.Id,
+            bookingCode = booking.BookingCode,
+            customerName = booking.User?.FullName,
+            customerEmail = booking.User?.Email,
+            customerPhone = booking.User?.PhoneNumber,
+            vehicleName = booking.Vehicle != null ? booking.Vehicle.Brand + " " + booking.Vehicle.Model : "-",
+            plate = booking.Vehicle?.LicensePlate,
+            pickupLocation = booking.PickupLocation,
+            dropoffLocation = booking.DropoffLocation,
+            pickupDate = booking.PickupDateTime.ToString("g", CultureInfo.CurrentCulture),
+            returnDate = booking.ReturnDateTime.ToString("g", CultureInfo.CurrentCulture),
+            totalAmount = booking.TotalAmount.ToString("C0", CultureInfo.CurrentCulture),
+            status = booking.Status.ToString(),
+            paymentStatus = booking.Payment?.Status.ToString() ?? "N/A",
+            history
+        }));
     }
 
     [HttpPost]
@@ -332,9 +329,10 @@ public class BookingController : Controller
             if (!success)
             {
                 Response.StatusCode = StatusCodes.Status400BadRequest;
+                return Json(ApiResponse<string>.Fail(message));
             }
 
-            return Json(new { success, message });
+            return Json(ApiResponse<string>.Ok(message));
         }
 
         if (success)
