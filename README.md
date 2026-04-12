@@ -78,6 +78,7 @@ Trong môi trường development, hai cờ này cũng đang tắt để app kh�
 ## Frontend UI Smoke Tests (Playwright)
 
 Project test đã có các smoke tests cho 3 luồng critical:
+
 - Listing filter
 - Booking create (anonymous flow redirect login)
 - Admin dashboard chart render
