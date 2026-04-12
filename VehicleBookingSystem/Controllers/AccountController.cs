@@ -1,10 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
 using VehicleBookingSystem.Extensions;
 using VehicleBookingSystem.Models;
-using VehicleBookingSystem.Services;
 using VehicleBookingSystem.ViewModels;
 
 namespace VehicleBookingSystem.Controllers;
@@ -13,16 +11,13 @@ public class AccountController : Controller
 {
     private readonly SignInManager<AppUser> _signInManager;
     private readonly UserManager<AppUser> _userManager;
-    private readonly IFileStorageService _fileStorageService;
 
     public AccountController(
         SignInManager<AppUser> signInManager,
-        UserManager<AppUser> userManager,
-        IFileStorageService fileStorageService)
+        UserManager<AppUser> userManager)
     {
         _signInManager = signInManager;
         _userManager = userManager;
-        _fileStorageService = fileStorageService;
     }
 
     [HttpGet]
@@ -34,10 +29,7 @@ public class AccountController : Controller
             return RedirectToAction("Index", "Home");
         }
 
-        return View(new RegisterViewModel
-        {
-            DateOfBirth = DateTime.Today.AddYears(-18)
-        });
+        return View(new RegisterViewModel());
     }
 
     [HttpPost]
@@ -53,7 +45,7 @@ public class AccountController : Controller
         var existingUser = await _userManager.FindByEmailAsync(model.Email);
         if (existingUser is not null)
         {
-            ModelState.AddModelError(nameof(model.Email), "Email đã được đăng ký.");
+            ModelState.AddModelError(nameof(model.Email), "Email is already registered.");
             return View(model);
         }
 
@@ -62,9 +54,7 @@ public class AccountController : Controller
             Id = Guid.NewGuid(),
             UserName = model.Email,
             Email = model.Email,
-            FullName = model.FullName.Trim(),
-            PhoneNumber = model.PhoneNumber.Trim(),
-            DateOfBirth = model.DateOfBirth,
+            FullName = model.FullName,
             EmailConfirmed = false
         };
 
@@ -83,23 +73,7 @@ public class AccountController : Controller
         if (!addRoleResult.Succeeded)
         {
             await _userManager.DeleteAsync(user);
-            ModelState.AddModelError(string.Empty, "Đăng ký thất bại, vui lòng thử lại.");
-            return View(model);
-        }
-
-        try
-        {
-            var avatarUrl = await _fileStorageService.SaveAvatarAsync(user.Id, model.AvatarFile);
-            if (!string.IsNullOrWhiteSpace(avatarUrl))
-            {
-                user.AvatarUrl = avatarUrl;
-                await _userManager.UpdateAsync(user);
-            }
-        }
-        catch (InvalidOperationException ex)
-        {
-            await _userManager.DeleteAsync(user);
-            ModelState.AddModelError(nameof(model.AvatarFile), ex.Message);
+            ModelState.AddModelError(string.Empty, "Registration failed. Please try again.");
             return View(model);
         }
 
@@ -124,7 +98,6 @@ public class AccountController : Controller
     [HttpPost]
     [AllowAnonymous]
     [ValidateAntiForgeryToken]
-    [EnableRateLimiting("login")]
     public async Task<IActionResult> Login(LoginViewModel model)
     {
         if (!ModelState.IsValid)
@@ -135,26 +108,26 @@ public class AccountController : Controller
         var user = await _userManager.FindByEmailAsync(model.Email);
         if (user is null)
         {
-            ModelState.AddModelError(string.Empty, "Email hoặc mật khẩu không đúng.");
+            ModelState.AddModelError(string.Empty, "Invalid email or password.");
             return View(model);
         }
 
         var result = await _signInManager.PasswordSignInAsync(user, model.Password, model.RememberMe, lockoutOnFailure: true);
         if (result.IsLockedOut)
         {
-            ModelState.AddModelError(string.Empty, "Tài khoản đã bị khóa do đăng nhập sai nhiều lần. Vui lòng thử lại sau 5 phút.");
+            ModelState.AddModelError(string.Empty, "Your account has been locked due to multiple failed login attempts. Please try again in 5 minutes.");
             return View(model);
         }
 
         if (result.IsNotAllowed)
         {
-            ModelState.AddModelError(string.Empty, "Tài khoản chưa được xác thực.");
+            ModelState.AddModelError(string.Empty, "Your account is not yet confirmed. Please check your email.");
             return View(model);
         }
 
         if (!result.Succeeded)
         {
-            ModelState.AddModelError(string.Empty, "Email hoặc mật khẩu không đúng.");
+            ModelState.AddModelError(string.Empty, "Invalid email or password.");
             return View(model);
         }
 
@@ -198,7 +171,7 @@ public class AccountController : Controller
             UserId = user.Id,
             FullName = user.FullName,
             Role = roles.FirstOrDefault() ?? "Customer",
-            Avatar = user.AvatarUrl ?? BuildAvatar(user.FullName)
+            Avatar = BuildAvatar(user.FullName)
         };
 
         HttpContext.Session.SetObject(SessionKeys.UserProfile, profile);

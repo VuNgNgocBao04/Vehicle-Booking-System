@@ -37,17 +37,9 @@ public class ApplicationDbContext : IdentityDbContext<AppUser, AppRole, Guid>
             entity.Property(vehicle => vehicle.Transmission).HasMaxLength(50).IsRequired();
             entity.Property(vehicle => vehicle.FuelType).HasMaxLength(50).IsRequired();
             entity.Property(vehicle => vehicle.ImageUrl).HasMaxLength(500);
-            entity.Property(vehicle => vehicle.Description).HasMaxLength(2000);
-            entity.Property(vehicle => vehicle.BookingPolicyHtml).HasMaxLength(6000);
+            entity.Property(vehicle => vehicle.Description).HasMaxLength(500);
             entity.HasIndex(vehicle => vehicle.Code).IsUnique();
             entity.HasIndex(vehicle => vehicle.LicensePlate).IsUnique();
-        });
-
-        builder.Entity<AppUser>(entity =>
-        {
-            entity.Property(user => user.FullName).HasMaxLength(100).IsRequired();
-            entity.Property(user => user.Address).HasMaxLength(300);
-            entity.Property(user => user.AvatarUrl).HasMaxLength(500);
         });
 
         builder.Entity<Booking>(entity =>

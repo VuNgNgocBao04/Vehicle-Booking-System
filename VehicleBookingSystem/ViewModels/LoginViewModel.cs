@@ -4,17 +4,15 @@ namespace VehicleBookingSystem.ViewModels;
 
 public class LoginViewModel
 {
-    [Required(ErrorMessage = "Email là bắt buộc.")]
-    [EmailAddress(ErrorMessage = "Email không đúng định dạng.")]
-    [Display(Name = "Email")]
+    [Required(ErrorMessage = "Email is required.")]
+    [EmailAddress(ErrorMessage = "Please enter a valid email address.")]
     public string Email { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Mật khẩu là bắt buộc.")]
+    [Required(ErrorMessage = "Password is required.")]
     [DataType(DataType.Password)]
-    [Display(Name = "Mật khẩu")]
     public string Password { get; set; } = string.Empty;
 
-    [Display(Name = "Ghi nhớ đăng nhập")]
+    [Display(Name = "Remember me")]
     public bool RememberMe { get; set; }
 
     public string? ReturnUrl { get; set; }
