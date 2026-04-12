@@ -2,6 +2,8 @@
 
 Thư mục này chứa các file Markdown phục vụ báo cáo và đóng gói bài tập lớn.
 
+Mã nguồn hiện đã chuyển logic nghiệp vụ chính sang service layer, nên các tài liệu cài đặt/đóng gói dưới đây cần được đọc cùng với `VehicleBookingSystem/Services/` và `VehicleBookingSystem/Controllers/`.
+
 ## Danh sách tài liệu
 
 - [Báo cáo tổng kết](bao-cao-tong-ket.md)

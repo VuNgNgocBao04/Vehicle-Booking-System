@@ -1,6 +1,7 @@
 using System.Data;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using VehicleBookingSystem.Data;
 using VehicleBookingSystem.Extensions;
 using VehicleBookingSystem.Models;
@@ -82,11 +83,21 @@ public sealed class BookingService : IBookingService
 
         var totalAmount = CalculateTotal(vehicle.DailyRate, model.PickupDateTime, model.ReturnDateTime);
 
-        await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        IDbContextTransaction? transaction = null;
+        if (_context.Database.IsRelational())
+        {
+            transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        }
 
         if (!await IsVehicleAvailableAsync(model.VehicleId, model.PickupDateTime, model.ReturnDateTime, cancellationToken))
         {
-            await transaction.RollbackAsync(cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                await transaction.DisposeAsync();
+                transaction = null;
+            }
+
             return new BookingCommandResult(false, "Vehicle is not available in the selected period.");
         }
 
@@ -129,12 +140,28 @@ public sealed class BookingService : IBookingService
         try
         {
             await _context.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
         }
         catch (DbUpdateException)
         {
-            await transaction.RollbackAsync(cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                await transaction.DisposeAsync();
+                transaction = null;
+            }
+
             return new BookingCommandResult(false, "Unable to create booking right now. Please try again.");
+        }
+        finally
+        {
+            if (transaction is not null)
+            {
+                await transaction.DisposeAsync();
+            }
         }
 
         return new BookingCommandResult(true, null, booking.Id);
@@ -240,6 +267,91 @@ public sealed class BookingService : IBookingService
         {
             return new BookingCommandResult(false, "Booking was updated by another request. Please refresh and try again.");
         }
+    }
+
+    public async Task<PagedResult<Booking>> GetApiBookingsAsync(Guid? userId, bool isAdmin, int page, int pageSize, CancellationToken cancellationToken = default)
+    {
+        var query = _context.Bookings
+            .AsNoTracking()
+            .Include(booking => booking.Vehicle)
+            .AsQueryable();
+
+        if (!isAdmin && userId.HasValue)
+        {
+            query = query.Where(booking => booking.UserId == userId.Value);
+        }
+
+        var totalItems = await query.CountAsync(cancellationToken);
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var items = await query
+            .OrderByDescending(booking => booking.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PagedResult<Booking>
+        {
+            Items = items,
+            Page = page,
+            PageSize = pageSize,
+            TotalItems = totalItems
+        };
+    }
+
+    public async Task<Booking?> GetApiBookingAsync(Guid bookingId, Guid? userId, bool isAdmin, CancellationToken cancellationToken = default)
+    {
+        var query = _context.Bookings
+            .AsNoTracking()
+            .Include(item => item.Vehicle)
+            .AsQueryable();
+
+        if (!isAdmin && userId.HasValue)
+        {
+            query = query.Where(item => item.UserId == userId.Value);
+        }
+
+        return await query.FirstOrDefaultAsync(item => item.Id == bookingId, cancellationToken);
+    }
+
+    public async Task<BookingCommandResult> CancelApiAsync(Guid bookingId, Guid? userId, bool isAdmin, string? changedBy, CancellationToken cancellationToken = default)
+    {
+        var query = _context.Bookings
+            .Include(item => item.StatusHistories)
+            .AsQueryable();
+
+        if (!isAdmin && userId.HasValue)
+        {
+            query = query.Where(item => item.UserId == userId.Value);
+        }
+
+        var booking = await query.FirstOrDefaultAsync(item => item.Id == bookingId, cancellationToken);
+        if (booking is null)
+        {
+            return new BookingCommandResult(false, "Booking not found.");
+        }
+
+        if (booking.PickupDateTime <= DateTime.UtcNow.AddHours(6))
+        {
+            return new BookingCommandResult(false, "Chỉ được hủy trước giờ nhận xe tối thiểu 6 tiếng.");
+        }
+
+        var fromStatus = booking.Status;
+        booking.Status = BookingStatus.Cancelled;
+        booking.StatusHistories.Add(new BookingStatusHistory
+        {
+            Id = Guid.NewGuid(),
+            BookingId = booking.Id,
+            FromStatus = fromStatus,
+            ToStatus = BookingStatus.Cancelled,
+            ChangedAtUtc = DateTime.UtcNow,
+            ChangedBy = changedBy ?? "API",
+            Note = "API cancel"
+        });
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return new BookingCommandResult(true);
     }
 
     public async Task<(bool IsAvailable, string Message, decimal TotalAmount)> CheckAvailabilityAsync(Guid vehicleId, DateTime pickupDateTime, DateTime returnDateTime, CancellationToken cancellationToken = default)

@@ -24,6 +24,7 @@ Bao gồm toàn bộ source của project:
 - `VehicleBookingSystem.Tests/`
 - `VehicleBookingSystem.sln`
 - Các file cấu hình liên quan.
+- Thư mục service layer nằm trong `VehicleBookingSystem/Services/` và phải được giữ nguyên khi đóng gói.
 
 ### 2.3 Frontend/template
 
@@ -74,6 +75,7 @@ Checklist:
 - [ ] Đổi ngôn ngữ hoạt động.
 - [ ] Responsive trên mobile/tablet.
 - [ ] Không còn dữ liệu demo nhạy cảm.
+- [ ] API bookings trả `ApiResponse<T>` và lỗi trả ProblemDetails.
 
 ## 5. Đề xuất hoàn thiện thêm nếu còn thời gian
 

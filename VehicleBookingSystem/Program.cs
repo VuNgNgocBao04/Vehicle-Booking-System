@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using VehicleBookingSystem.Data;
+using VehicleBookingSystem.Contracts.Common;
 using VehicleBookingSystem.Models;
 using VehicleBookingSystem.Options;
 using VehicleBookingSystem.Resources;
@@ -113,9 +114,11 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 builder.Services.AddSingleton<IHtmlSanitizerService, HtmlSanitizerService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IVehicleService, VehicleService>();
+builder.Services.AddSingleton<ApiProblemDetailsFactory>();
 
 var applyMigrationsOnStartup = builder.Configuration.GetValue<bool>("StartupOptions:ApplyMigrationsOnStartup");
 var seedOnStartup = builder.Configuration.GetValue<bool>("StartupOptions:SeedOnStartup");

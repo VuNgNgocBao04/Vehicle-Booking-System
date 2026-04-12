@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -13,16 +14,16 @@ public class AccountController : Controller
 {
     private readonly SignInManager<AppUser> _signInManager;
     private readonly UserManager<AppUser> _userManager;
-    private readonly IFileStorageService _fileStorageService;
+    private readonly IAccountService _accountService;
 
     public AccountController(
         SignInManager<AppUser> signInManager,
         UserManager<AppUser> userManager,
-        IFileStorageService fileStorageService)
+        IAccountService accountService)
     {
         _signInManager = signInManager;
         _userManager = userManager;
-        _fileStorageService = fileStorageService;
+        _accountService = accountService;
     }
 
     [HttpGet]
@@ -50,61 +51,15 @@ public class AccountController : Controller
             return View(model);
         }
 
-        var existingUser = await _userManager.FindByEmailAsync(model.Email);
-        if (existingUser is not null)
+        var result = await _accountService.RegisterAsync(model);
+        if (!result.Succeeded || result.User is null)
         {
-            ModelState.AddModelError(nameof(model.Email), "Email đã được đăng ký.");
+            ModelState.AddModelError(string.IsNullOrWhiteSpace(result.ErrorMessage) ? nameof(model.Email) : string.Empty, result.ErrorMessage ?? "Đăng ký thất bại, vui lòng thử lại.");
             return View(model);
         }
 
-        var user = new AppUser
-        {
-            Id = Guid.NewGuid(),
-            UserName = model.Email,
-            Email = model.Email,
-            FullName = model.FullName.Trim(),
-            PhoneNumber = model.PhoneNumber.Trim(),
-            DateOfBirth = model.DateOfBirth,
-            EmailConfirmed = false
-        };
-
-        var createResult = await _userManager.CreateAsync(user, model.Password);
-        if (!createResult.Succeeded)
-        {
-            foreach (var error in createResult.Errors)
-            {
-                ModelState.AddModelError(string.Empty, error.Description);
-            }
-
-            return View(model);
-        }
-
-        var addRoleResult = await _userManager.AddToRoleAsync(user, "Customer");
-        if (!addRoleResult.Succeeded)
-        {
-            await _userManager.DeleteAsync(user);
-            ModelState.AddModelError(string.Empty, "Đăng ký thất bại, vui lòng thử lại.");
-            return View(model);
-        }
-
-        try
-        {
-            var avatarUrl = await _fileStorageService.SaveAvatarAsync(user.Id, model.AvatarFile);
-            if (!string.IsNullOrWhiteSpace(avatarUrl))
-            {
-                user.AvatarUrl = avatarUrl;
-                await _userManager.UpdateAsync(user);
-            }
-        }
-        catch (InvalidOperationException ex)
-        {
-            await _userManager.DeleteAsync(user);
-            ModelState.AddModelError(nameof(model.AvatarFile), ex.Message);
-            return View(model);
-        }
-
-        await _signInManager.SignInAsync(user, isPersistent: false);
-        await StoreUserSessionAsync(user);
+        await _signInManager.SignInAsync(result.User, isPersistent: false);
+        await StoreUserSessionAsync(result.User);
 
         return RedirectToAction("Index", "Customer");
     }
@@ -132,40 +87,21 @@ public class AccountController : Controller
             return View(model);
         }
 
-        var user = await _userManager.FindByEmailAsync(model.Email);
-        if (user is null)
+        var result = await _accountService.LoginAsync(model);
+        if (!result.Succeeded || result.User is null)
         {
-            ModelState.AddModelError(string.Empty, "Email hoặc mật khẩu không đúng.");
+            ModelState.AddModelError(string.Empty, result.ErrorMessage ?? "Email hoặc mật khẩu không đúng.");
             return View(model);
         }
 
-        var result = await _signInManager.PasswordSignInAsync(user, model.Password, model.RememberMe, lockoutOnFailure: true);
-        if (result.IsLockedOut)
-        {
-            ModelState.AddModelError(string.Empty, "Tài khoản đã bị khóa do đăng nhập sai nhiều lần. Vui lòng thử lại sau 5 phút.");
-            return View(model);
-        }
-
-        if (result.IsNotAllowed)
-        {
-            ModelState.AddModelError(string.Empty, "Tài khoản chưa được xác thực.");
-            return View(model);
-        }
-
-        if (!result.Succeeded)
-        {
-            ModelState.AddModelError(string.Empty, "Email hoặc mật khẩu không đúng.");
-            return View(model);
-        }
-
-        await StoreUserSessionAsync(user);
+        await StoreUserSessionAsync(result.User);
 
         if (!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
         {
             return Redirect(model.ReturnUrl);
         }
 
-        if (await _userManager.IsInRoleAsync(user, "Admin"))
+        if (await _userManager.IsInRoleAsync(result.User, "Admin"))
         {
             return RedirectToAction("Index", "Dashboard", new { area = "Admin" });
         }
@@ -194,23 +130,17 @@ public class AccountController : Controller
     [Authorize]
     public async Task<IActionResult> Profile()
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user is null)
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId) || !Guid.TryParse(userId, out var parsedUserId))
         {
             return Challenge();
         }
 
-        var model = new ProfileViewModel
+        var model = await _accountService.GetProfileAsync(parsedUserId);
+        if (model is null)
         {
-            Update = new ProfileUpdateViewModel
-            {
-                FullName = user.FullName,
-                PhoneNumber = user.PhoneNumber,
-                Address = user.Address,
-                DateOfBirth = user.DateOfBirth,
-                CurrentAvatarUrl = user.AvatarUrl
-            }
-        };
+            return Challenge();
+        }
 
         return View(model);
     }
@@ -220,50 +150,30 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Profile(ProfileViewModel model)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user is null)
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId) || !Guid.TryParse(userId, out var parsedUserId))
         {
             return Challenge();
         }
 
         if (!TryValidateModel(model.Update, nameof(ProfileViewModel.Update)))
         {
-            model.Update.CurrentAvatarUrl = user.AvatarUrl;
             return View(model);
         }
 
-        user.FullName = model.Update.FullName.Trim();
-        user.PhoneNumber = model.Update.PhoneNumber?.Trim();
-        user.Address = model.Update.Address?.Trim();
-        user.DateOfBirth = model.Update.DateOfBirth;
-
-        if (model.Update.AvatarFile is not null)
+        var result = await _accountService.UpdateProfileAsync(parsedUserId, model.Update);
+        if (!result.Succeeded || result.User is null)
         {
-            try
+            if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
             {
-                user.AvatarUrl = await _fileStorageService.SaveAvatarAsync(user.Id, model.Update.AvatarFile);
-            }
-            catch (InvalidOperationException ex)
-            {
-                ModelState.AddModelError(nameof(ProfileViewModel.Update) + ".AvatarFile", ex.Message);
-                model.Update.CurrentAvatarUrl = user.AvatarUrl;
-                return View(model);
-            }
-        }
-
-        var result = await _userManager.UpdateAsync(user);
-        if (!result.Succeeded)
-        {
-            foreach (var error in result.Errors)
-            {
-                ModelState.AddModelError(string.Empty, error.Description);
+                ModelState.AddModelError(nameof(ProfileViewModel.Update) + ".AvatarFile", result.ErrorMessage);
             }
 
-            model.Update.CurrentAvatarUrl = user.AvatarUrl;
+            model.Update.CurrentAvatarUrl = result.User?.AvatarUrl;
             return View(model);
         }
 
-        await StoreUserSessionAsync(user);
+        await StoreUserSessionAsync(result.User);
         TempData["Message"] = "Cập nhật hồ sơ thành công.";
         return RedirectToAction(nameof(Profile));
     }
@@ -273,38 +183,35 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ChangePassword(ProfileViewModel model)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user is null)
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId) || !Guid.TryParse(userId, out var parsedUserId))
         {
             return Challenge();
         }
 
-        model.Update = new ProfileUpdateViewModel
+        var profile = await _accountService.GetProfileAsync(parsedUserId);
+        if (profile is null)
         {
-            FullName = user.FullName,
-            PhoneNumber = user.PhoneNumber,
-            Address = user.Address,
-            DateOfBirth = user.DateOfBirth,
-            CurrentAvatarUrl = user.AvatarUrl
-        };
+            return Challenge();
+        }
+
+        model.Update = profile.Update;
 
         if (!TryValidateModel(model.ChangePassword, nameof(ProfileViewModel.ChangePassword)))
         {
             return View("Profile", model);
         }
 
-        var result = await _userManager.ChangePasswordAsync(user, model.ChangePassword.CurrentPassword, model.ChangePassword.NewPassword);
+        var result = await _accountService.ChangePasswordAsync(parsedUserId, model.ChangePassword);
         if (!result.Succeeded)
         {
-            foreach (var error in result.Errors)
+            foreach (var error in (result.ErrorMessage ?? string.Empty).Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             {
-                ModelState.AddModelError(string.Empty, error.Description);
+                ModelState.AddModelError(string.Empty, error);
             }
 
             return View("Profile", model);
         }
-
-        await _signInManager.RefreshSignInAsync(user);
         TempData["Message"] = "Đổi mật khẩu thành công.";
         return RedirectToAction(nameof(Profile));
     }

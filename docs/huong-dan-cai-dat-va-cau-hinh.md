@@ -53,6 +53,12 @@ Các mục cần lưu ý:
 - Startup options.
 - Seed data.
 
+Kiến trúc runtime hiện tại:
+
+- `BookingService`, `CustomerService`, `VehicleService`, `AccountService` chứa logic nghiệp vụ chính.
+- `Api/BookingsController` trả dữ liệu thành công qua `ApiResponse<T>`.
+- Lỗi không xử lý được sẽ đi qua `HomeController.Error` và trả ProblemDetails cho API.
+
 ### 4.2 Cấu hình seed admin
 
 Nếu muốn tự tạo dữ liệu mẫu khi chạy lần đầu:
@@ -98,6 +104,7 @@ Nên kiểm tra tối thiểu các luồng sau:
 - Tạo booking từ phía khách.
 - Hủy booking.
 - Xem lịch sử trạng thái booking.
+- Gọi API bookings và kiểm tra response chuẩn `ApiResponse<T>`.
 
 ## 8. Lưu ý bảo mật khi triển khai
 

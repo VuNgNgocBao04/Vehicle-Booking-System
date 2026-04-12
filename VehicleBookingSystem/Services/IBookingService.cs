@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using VehicleBookingSystem.Contracts.Bookings;
 using VehicleBookingSystem.Models;
 using VehicleBookingSystem.ViewModels;
 
@@ -15,4 +16,7 @@ public interface IBookingService
     Task<Booking?> GetDetailsAsync(Guid bookingId, Guid userId, CancellationToken cancellationToken = default);
     Task<BookingCommandResult> CancelAsync(Guid bookingId, Guid userId, string? changedBy, CancellationToken cancellationToken = default);
     Task<(bool IsAvailable, string Message, decimal TotalAmount)> CheckAvailabilityAsync(Guid vehicleId, DateTime pickupDateTime, DateTime returnDateTime, CancellationToken cancellationToken = default);
+    Task<PagedResult<Booking>> GetApiBookingsAsync(Guid? userId, bool isAdmin, int page, int pageSize, CancellationToken cancellationToken = default);
+    Task<Booking?> GetApiBookingAsync(Guid bookingId, Guid? userId, bool isAdmin, CancellationToken cancellationToken = default);
+    Task<BookingCommandResult> CancelApiAsync(Guid bookingId, Guid? userId, bool isAdmin, string? changedBy, CancellationToken cancellationToken = default);
 }

@@ -4,9 +4,11 @@ Hệ thống Quản lý và Đặt xe trực tuyến (Vehicle Booking Management
 
 ## Kiến trúc
 
-Project được dựng bằng ASP.NET Core MVC + Entity Framework Core Code First + SQL Server. `Users` và `Roles` dùng ASP.NET Core Identity, còn `Vehicles`, `Bookings`, `Payments` và `VehicleCategories` là các bảng nghiệp vụ.
+Project được dựng bằng ASP.NET Core MVC + Entity Framework Core Code First + SQL Server. `Users` và `Roles` dùng ASP.NET Core Identity, còn `Vehicles`, `Bookings`, `Payments` và `VehicleCategories` là các bảng nghiệp vụ. Phần nghiệp vụ chính đã được tách vào service layer riêng: `AccountService`, `BookingService`, `CustomerService`, `VehicleService`.
 
 Ứng dụng đã được chỉnh để mở ổn trong Visual Studio 2022/2025 bằng launch profile trong `VehicleBookingSystem/Properties/launchSettings.json`. Ảnh gallery và avatar không còn phụ thuộc vào working directory hiện tại, nên chạy từ Visual Studio, `dotnet run`, hay IIS Express đều ổn định hơn.
+
+API đã chuẩn hóa response theo `ApiResponse<T>` cho dữ liệu thành công và dùng `ProblemDetails` chung cho lỗi.
 
 ## ERD
 
@@ -128,6 +130,13 @@ pwsh VehicleBookingSystem.Tests/bin/Debug/net9.0/playwright.ps1 install
 - Role: `Admin`, `Customer`
 - Danh mục xe: `Sedan`, `SUV`, `MPV`, `Hatchback`
 - Xe mẫu đã được tạo sẵn khi ứng dụng khởi động lần đầu
+
+## Kiến trúc hiện tại
+
+- MVC controllers chỉ còn vai trò orchestration.
+- Service layer xử lý query/command cho account, booking, customer và vehicle.
+- API bookings dùng `ApiResponse<T>` và `ApiProblemDetailsFactory` để giữ response nhất quán.
+- Các lỗi runtime đi qua `HomeController.Error` để hiển thị HTML cho MVC hoặc ProblemDetails cho API.
 
 ## Tài liệu nộp bài
 

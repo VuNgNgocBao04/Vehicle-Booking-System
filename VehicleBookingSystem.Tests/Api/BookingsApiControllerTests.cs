@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using VehicleBookingSystem.Contracts.Bookings;
+using VehicleBookingSystem.Contracts.Common;
 using VehicleBookingSystem.Controllers.Api;
 using VehicleBookingSystem.Data;
 using VehicleBookingSystem.Models;
+using VehicleBookingSystem.Services;
 
 namespace VehicleBookingSystem.Tests.Api;
 
@@ -60,9 +62,11 @@ public class BookingsApiControllerTests
         var action = await controller.Create(request);
 
         var created = Assert.IsType<CreatedAtActionResult>(action.Result);
-        var response = Assert.IsType<BookingResponse>(created.Value);
-        Assert.Equal(1000000, response.TotalAmount);
-        Assert.Equal(BookingStatus.Pending, response.Status);
+        var response = Assert.IsType<ApiResponse<BookingResponse>>(created.Value);
+        Assert.True(response.Success);
+        Assert.NotNull(response.Data);
+        Assert.Equal(1000000, response.Data!.TotalAmount);
+        Assert.Equal(BookingStatus.Pending, response.Data.Status);
     }
 
     private static ApplicationDbContext BuildContext(string dbName)
@@ -76,7 +80,8 @@ public class BookingsApiControllerTests
 
     private static BookingsController BuildController(ApplicationDbContext context)
     {
-        var controller = new BookingsController(context)
+        var bookingService = new BookingService(context);
+        var controller = new BookingsController(bookingService, new ApiProblemDetailsFactory())
         {
             ControllerContext = new ControllerContext
             {
