@@ -4,6 +4,7 @@
 }
 
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap");
+@import url("https://cdn.jsdelivr.net/npm/nouislider@15.8.1/dist/nouislider.min.css");
 
 :root {
   --user-bg: #f3efe8;
@@ -673,6 +674,19 @@ body.admin-layout {
   border-radius: 999px;
   object-fit: cover;
   border: 3px solid rgba(255, 255, 255, 0.8);
+}
+
+#priceRangeSlider {
+  margin-inline: 0.25rem;
+}
+
+#priceRangeSlider .noUi-connect {
+  background: #1d4ed8;
+}
+
+#priceRangeSlider .noUi-handle {
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25);
 }
 
 @media (max-width: 991px) {

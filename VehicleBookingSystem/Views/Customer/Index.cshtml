@@ -51,9 +51,15 @@
                 <div class="mb-3">
                     <label class="form-label">Price range (VND/day)</label>
                     <div class="d-flex gap-2">
-                        <input asp-for="Filter.MinDailyRate" class="form-control" placeholder="Min" inputmode="numeric" />
-                        <input asp-for="Filter.MaxDailyRate" class="form-control" placeholder="Max" inputmode="numeric" />
+                        <input asp-for="Filter.MinDailyRate" class="form-control" placeholder="Min" inputmode="numeric" type="number" step="1000" />
+                        <input asp-for="Filter.MaxDailyRate" class="form-control" placeholder="Max" inputmode="numeric" type="number" step="1000" />
                     </div>
+                    <div id="priceRangeSlider"
+                         class="mt-3"
+                         data-min="@Model.PriceRangeMin.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                         data-max="@Model.PriceRangeMax.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                         data-start-min="@((Model.Filter.MinDailyRate ?? Model.PriceRangeMin).ToString(System.Globalization.CultureInfo.InvariantCulture))"
+                         data-start-max="@((Model.Filter.MaxDailyRate ?? Model.PriceRangeMax).ToString(System.Globalization.CultureInfo.InvariantCulture))"></div>
                     <div class="small text-muted mt-1">@Model.PriceRangeMin.ToString("N0") - @Model.PriceRangeMax.ToString("N0")</div>
                 </div>
 
@@ -122,6 +128,7 @@
 </div>
 
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/nouislider@15.8.1/dist/nouislider.min.js"></script>
     <script>
         (function () {
             const app = window.VehicleBookingApp;
@@ -131,6 +138,58 @@
             const suggest = document.getElementById("vehicleSearchSuggest");
             const searchInput = document.getElementById("vehicleSearchInput");
             const viewModeInput = document.getElementById("viewModeInput");
+            const slider = document.getElementById("priceRangeSlider");
+            const minInput = form.querySelector("input[name='Filter.MinDailyRate']");
+            const maxInput = form.querySelector("input[name='Filter.MaxDailyRate']");
+
+            function toNumber(value, fallback) {
+                const parsed = Number(value);
+                return Number.isFinite(parsed) ? parsed : fallback;
+            }
+
+            function clamp(value, min, max) {
+                return Math.min(Math.max(value, min), max);
+            }
+
+            function initPriceSlider() {
+                if (!slider || !window.noUiSlider || !minInput || !maxInput) {
+                    return;
+                }
+
+                const rangeMin = toNumber(slider.dataset.min, 0);
+                const rangeMax = toNumber(slider.dataset.max, rangeMin + 1000000);
+                const startMin = clamp(toNumber(slider.dataset.startMin, rangeMin), rangeMin, rangeMax);
+                const startMax = clamp(toNumber(slider.dataset.startMax, rangeMax), rangeMin, rangeMax);
+
+                if (slider.noUiSlider) {
+                    slider.noUiSlider.destroy();
+                }
+
+                noUiSlider.create(slider, {
+                    start: [Math.min(startMin, startMax), Math.max(startMin, startMax)],
+                    connect: true,
+                    step: 1000,
+                    range: { min: rangeMin, max: rangeMax }
+                });
+
+                slider.noUiSlider.on("update", (values) => {
+                    minInput.value = Math.round(values[0]);
+                    maxInput.value = Math.round(values[1]);
+                });
+
+                const syncFromInput = () => {
+                    const currentMin = clamp(toNumber(minInput.value, rangeMin), rangeMin, rangeMax);
+                    const currentMax = clamp(toNumber(maxInput.value, rangeMax), rangeMin, rangeMax);
+                    const safeMin = Math.min(currentMin, currentMax);
+                    const safeMax = Math.max(currentMin, currentMax);
+                    minInput.value = safeMin;
+                    maxInput.value = safeMax;
+                    slider.noUiSlider.set([safeMin, safeMax]);
+                };
+
+                minInput.addEventListener("change", syncFromInput);
+                maxInput.addEventListener("change", syncFromInput);
+            }
 
             async function fetchVehicles(url, pushState = true) {
                 spinner.classList.remove("d-none");
@@ -236,6 +295,7 @@
 
             bindPagination();
             bindCommentButtons();
+            initPriceSlider();
         })();
     </script>
 }

@@ -75,6 +75,43 @@ dotnet run --project VehicleBookingSystem
 Connection string cho môi trường development nằm trong `VehicleBookingSystem/appsettings.Development.json`. Nếu triển khai production, hãy đặt `ConnectionStrings__DefaultConnection` và giữ `StartupOptions:ApplyMigrationsOnStartup`/`StartupOptions:SeedOnStartup` ở `false`.
 Trong môi trường development, hai cờ này cũng đang tắt để app khởi động ổn định khi test trên browser; nếu cần seed dữ liệu, hãy bật lại thủ công và đặt `SeedData:AdminPassword` bằng user-secrets.
 
+## Frontend UI Smoke Tests (Playwright)
+
+Project test đã có các smoke tests cho 3 luồng critical:
+- Listing filter
+- Booking create (anonymous flow redirect login)
+- Admin dashboard chart render
+
+Các test UI đã được gắn category riêng: `Category=E2E`.
+
+### Lệnh pipeline mặc định (nhanh, không chạy E2E)
+
+```bash
+dotnet test VehicleBookingSystem.Tests/VehicleBookingSystem.Tests.csproj --filter "Category!=E2E"
+```
+
+### Lệnh chạy riêng E2E smoke tests
+
+```bash
+dotnet test VehicleBookingSystem.Tests/VehicleBookingSystem.Tests.csproj --filter "Category=E2E"
+```
+
+Các test này chỉ chạy khi bật cờ môi trường, để tránh fail trên máy chưa chạy web app:
+
+```bash
+set RUN_UI_SMOKE=true
+set UI_BASE_URL=https://localhost:5001
+set UI_ADMIN_EMAIL=admin@vehiclebooking.local
+set UI_ADMIN_PASSWORD=<your-admin-password>
+dotnet test VehicleBookingSystem.Tests/VehicleBookingSystem.Tests.csproj
+```
+
+Lần đầu chạy cần cài browser cho Playwright:
+
+```bash
+pwsh VehicleBookingSystem.Tests/bin/Debug/net9.0/playwright.ps1 install
+```
+
 ## Seed dữ liệu mẫu
 
 - Tài khoản admin: `admin@vehiclebooking.local`
