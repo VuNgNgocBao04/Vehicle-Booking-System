@@ -124,3 +124,13 @@ pwsh VehicleBookingSystem.Tests/bin/Debug/net9.0/playwright.ps1 install
 - Role: `Admin`, `Customer`
 - Danh mục xe: `Sedan`, `SUV`, `MPV`, `Hatchback`
 - Xe mẫu đã được tạo sẵn khi ứng dụng khởi động lần đầu
+
+## Tài liệu nộp bài
+
+Các file Markdown phục vụ báo cáo và đóng gói được đặt trong thư mục `docs/`:
+
+- [Báo cáo tổng kết](docs/bao-cao-tong-ket.md)
+- [Hướng dẫn cài đặt và cấu hình](docs/huong-dan-cai-dat-va-cau-hinh.md)
+- [Hướng dẫn đóng gói sản phẩm](docs/dong-goi-san-pham.md)
+
+Khi hoàn thiện, hãy xuất báo cáo sang Word/PDF theo đúng định dạng yêu cầu của giảng viên và thêm ảnh minh họa thực tế vào các vị trí được đánh dấu trong báo cáo.
