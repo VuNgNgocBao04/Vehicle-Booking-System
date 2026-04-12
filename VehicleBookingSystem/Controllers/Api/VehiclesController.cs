@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using VehicleBookingSystem.Contracts.Common;
@@ -17,11 +18,13 @@ public class VehiclesController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly IHtmlSanitizerService _htmlSanitizer;
+    private readonly IWebHostEnvironment _environment;
 
-    public VehiclesController(ApplicationDbContext context, IHtmlSanitizerService htmlSanitizer)
+    public VehiclesController(ApplicationDbContext context, IHtmlSanitizerService htmlSanitizer, IWebHostEnvironment environment)
     {
         _context = context;
         _htmlSanitizer = htmlSanitizer;
+        _environment = environment;
     }
 
     [HttpGet]
@@ -58,13 +61,16 @@ public class VehiclesController : ControllerBase
         }
 
         var totalItems = await query.CountAsync();
-        var items = await query
+        var vehicles = await query
             .OrderBy(vehicle => vehicle.Brand)
             .ThenBy(vehicle => vehicle.Model)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(vehicle => MapVehicleResponse(vehicle, BuildGalleryUrls(vehicle.Id)))
             .ToListAsync();
+
+        var items = vehicles
+            .Select(vehicle => MapVehicleResponse(vehicle, BuildGalleryUrls(vehicle.Id)))
+            .ToList();
 
         return Ok(new PagedResponse<VehicleResponse>
         {
@@ -228,7 +234,7 @@ public class VehiclesController : ControllerBase
         return Ok(new { message = "Đã xóa xe thành công." });
     }
 
-    private static VehicleResponse MapVehicleResponse(Vehicle vehicle, IReadOnlyList<string> galleryUrls)
+    private VehicleResponse MapVehicleResponse(Vehicle vehicle, IReadOnlyList<string> galleryUrls)
     {
         return new VehicleResponse
         {
@@ -247,15 +253,14 @@ public class VehiclesController : ControllerBase
             Status = vehicle.Status,
             ImageUrl = vehicle.ImageUrl,
             GalleryUrls = galleryUrls,
-            Description = vehicle.Description,
-            BookingPolicyHtml = vehicle.BookingPolicyHtml
+            Description = _htmlSanitizer.Sanitize(vehicle.Description),
+            BookingPolicyHtml = _htmlSanitizer.Sanitize(vehicle.BookingPolicyHtml)
         };
     }
 
-    private static IReadOnlyList<string> BuildGalleryUrls(Guid vehicleId)
+    private IReadOnlyList<string> BuildGalleryUrls(Guid vehicleId)
     {
-        var relativeFolder = Path.Combine("Content", "Images", "Vehicles", vehicleId.ToString("N"));
-        var webRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", relativeFolder);
+        var webRoot = Path.Combine(_environment.WebRootPath, "Content", "Images", "Vehicles", vehicleId.ToString("N"));
         if (!Directory.Exists(webRoot))
         {
             return [];
@@ -264,7 +269,7 @@ public class VehiclesController : ControllerBase
         return Directory
             .GetFiles(webRoot)
             .OrderBy(path => path)
-            .Select(path => $"/{relativeFolder.Replace("\\", "/")}/{Path.GetFileName(path)}")
+            .Select(path => $"/Content/Images/Vehicles/{vehicleId:N}/{Path.GetFileName(path)}")
             .ToList();
     }
 }

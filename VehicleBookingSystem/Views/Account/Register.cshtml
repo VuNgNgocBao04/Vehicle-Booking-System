@@ -68,19 +68,31 @@
         (function () {
             const input = document.getElementById("AvatarFile");
             const preview = document.getElementById("avatarPreview");
+            let currentObjectUrl = null;
+
+            function clearPreviewUrl() {
+                if (currentObjectUrl) {
+                    URL.revokeObjectURL(currentObjectUrl);
+                    currentObjectUrl = null;
+                }
+            }
 
             input?.addEventListener("change", function () {
                 const file = input.files && input.files[0];
                 if (!file) {
+                    clearPreviewUrl();
                     preview.classList.add("d-none");
                     preview.removeAttribute("src");
                     return;
                 }
 
-                const objectUrl = URL.createObjectURL(file);
-                preview.src = objectUrl;
+                clearPreviewUrl();
+                currentObjectUrl = URL.createObjectURL(file);
+                preview.src = currentObjectUrl;
                 preview.classList.remove("d-none");
             });
+
+            window.addEventListener("beforeunload", clearPreviewUrl);
         })();
     </script>
 }

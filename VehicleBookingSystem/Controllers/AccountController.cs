@@ -93,7 +93,13 @@ public class AccountController : Controller
             if (!string.IsNullOrWhiteSpace(avatarUrl))
             {
                 user.AvatarUrl = avatarUrl;
-                await _userManager.UpdateAsync(user);
+                var updateResult = await _userManager.UpdateAsync(user);
+                if (!updateResult.Succeeded)
+                {
+                    await _userManager.DeleteAsync(user);
+                    ModelState.AddModelError(string.Empty, "Không thể cập nhật hồ sơ tài khoản.");
+                    return View(model);
+                }
             }
         }
         catch (InvalidOperationException ex)

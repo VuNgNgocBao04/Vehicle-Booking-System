@@ -112,6 +112,8 @@ Lần đầu chạy cần cài browser cho Playwright:
 pwsh VehicleBookingSystem.Tests/bin/Debug/net9.0/playwright.ps1 install
 ```
 
+Lưu ý triển khai production: TinyMCE trong trang quản trị xe đang dùng CDN `no-api-key` cho mục đích development. Trước khi deploy, cần thay bằng API key hợp lệ (hoặc self-host) để tránh cảnh báo và giới hạn tính năng từ nhà cung cấp.
+
 ## Seed dữ liệu mẫu
 
 - Tài khoản admin: `admin@vehiclebooking.local`
