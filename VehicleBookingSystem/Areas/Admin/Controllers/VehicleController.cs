@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -16,15 +17,18 @@ public class VehicleController : Controller
     private readonly ApplicationDbContext _context;
     private readonly IFileStorageService _fileStorageService;
     private readonly IHtmlSanitizerService _htmlSanitizer;
+    private readonly IWebHostEnvironment _environment;
 
     public VehicleController(
         ApplicationDbContext context,
         IFileStorageService fileStorageService,
-        IHtmlSanitizerService htmlSanitizer)
+        IHtmlSanitizerService htmlSanitizer,
+        IWebHostEnvironment environment)
     {
         _context = context;
         _fileStorageService = fileStorageService;
         _htmlSanitizer = htmlSanitizer;
+        _environment = environment;
     }
 
     [HttpGet]
@@ -153,9 +157,9 @@ public class VehicleController : Controller
                 vehicle.ImageUrl = form.ImageUrl;
             }
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            ModelState.AddModelError(nameof(form.GalleryFiles), ex.Message);
+            ModelState.AddModelError(nameof(form.GalleryFiles), ex is InvalidOperationException ? ex.Message : "Không thể lưu ảnh xe. Vui lòng thử lại với file ảnh hợp lệ.");
             await LoadLookupAsync(form.VehicleCategoryId);
             return View(form);
         }
@@ -260,9 +264,9 @@ public class VehicleController : Controller
                 vehicle.ImageUrl = form.ImageUrl;
             }
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            ModelState.AddModelError(nameof(form.GalleryFiles), ex.Message);
+            ModelState.AddModelError(nameof(form.GalleryFiles), ex is InvalidOperationException ? ex.Message : "Không thể lưu ảnh xe. Vui lòng thử lại với file ảnh hợp lệ.");
             form.ExistingGalleryUrls = BuildGalleryUrls(vehicle.Id);
             await LoadLookupAsync(form.VehicleCategoryId);
             return View(form);
@@ -374,9 +378,9 @@ public class VehicleController : Controller
         }
     }
 
-    private static IReadOnlyList<string> BuildGalleryUrls(Guid vehicleId)
+    private IReadOnlyList<string> BuildGalleryUrls(Guid vehicleId)
     {
-        var root = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Content", "Images", "Vehicles", vehicleId.ToString("N"));
+        var root = Path.Combine(_environment.WebRootPath, "Content", "Images", "Vehicles", vehicleId.ToString("N"));
         if (!Directory.Exists(root))
         {
             return [];

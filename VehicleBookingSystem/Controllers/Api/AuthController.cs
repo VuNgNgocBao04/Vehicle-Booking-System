@@ -57,7 +57,8 @@ public class AuthController : ControllerBase
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
         var expires = DateTime.UtcNow.AddMinutes(_jwtOptions.ExpireMinutes);
-        var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.Key));
+        var key = _jwtOptions.Key ?? throw new InvalidOperationException("Jwt:Key is required.");
+        var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
         var token = new JwtSecurityToken(
             issuer: _jwtOptions.Issuer,
             audience: _jwtOptions.Audience,

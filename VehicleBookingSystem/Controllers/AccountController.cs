@@ -93,13 +93,19 @@ public class AccountController : Controller
             if (!string.IsNullOrWhiteSpace(avatarUrl))
             {
                 user.AvatarUrl = avatarUrl;
-                await _userManager.UpdateAsync(user);
+                var updateResult = await _userManager.UpdateAsync(user);
+                if (!updateResult.Succeeded)
+                {
+                    await _userManager.DeleteAsync(user);
+                    ModelState.AddModelError(string.Empty, "Không thể cập nhật hồ sơ tài khoản.");
+                    return View(model);
+                }
             }
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
             await _userManager.DeleteAsync(user);
-            ModelState.AddModelError(nameof(model.AvatarFile), ex.Message);
+            ModelState.AddModelError(nameof(model.AvatarFile), ex is InvalidOperationException ? ex.Message : "Không thể lưu ảnh đại diện. Vui lòng thử lại với một file ảnh hợp lệ.");
             return View(model);
         }
 

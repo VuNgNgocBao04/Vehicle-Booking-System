@@ -77,7 +77,7 @@ public sealed class FileStorageService : IFileStorageService
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
             if (!AllowedExtensions.Contains(extension))
             {
-                throw new InvalidOperationException("Chỉ cho phép file ảnh .jpg, .png hoặc .webp.");
+                throw new InvalidOperationException("Chỉ cho phép file ảnh .jpg, .jpeg, .png hoặc .webp.");
             }
 
             if (file.Length == 0 || file.Length > MaxFileSizeInBytes)
@@ -107,17 +107,32 @@ public sealed class FileStorageService : IFileStorageService
 
     private static async Task SaveResizedJpegAsync(IFormFile file, string outputPath, CancellationToken cancellationToken, int maxWidth = 1280, int maxHeight = 960)
     {
-        await using var input = file.OpenReadStream();
-        using var image = await Image.LoadAsync(input, cancellationToken);
+        try
+        {
+            await using var input = file.OpenReadStream();
+            using var image = await Image.LoadAsync(input, cancellationToken);
 
-        image.Mutate(context =>
-            context.Resize(new ResizeOptions
-            {
-                Mode = ResizeMode.Max,
-                Size = new Size(maxWidth, maxHeight)
-            }));
+            image.Mutate(context =>
+                context.Resize(new ResizeOptions
+                {
+                    Mode = ResizeMode.Max,
+                    Size = new Size(maxWidth, maxHeight)
+                }));
 
-        await using var output = File.Create(outputPath);
-        await image.SaveAsJpegAsync(output, new JpegEncoder { Quality = 82 }, cancellationToken);
+            await using var output = File.Create(outputPath);
+            await image.SaveAsJpegAsync(output, new JpegEncoder { Quality = 82 }, cancellationToken);
+        }
+        catch (UnknownImageFormatException ex)
+        {
+            throw new InvalidOperationException("Tệp ảnh không hợp lệ hoặc bị hỏng.", ex);
+        }
+        catch (InvalidImageContentException ex)
+        {
+            throw new InvalidOperationException("Tệp ảnh không hợp lệ hoặc bị hỏng.", ex);
+        }
+        catch (IOException ex)
+        {
+            throw new InvalidOperationException("Không thể lưu ảnh. Vui lòng thử lại.", ex);
+        }
     }
 }

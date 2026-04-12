@@ -26,7 +26,10 @@ builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 
-var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
+var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
+    ?? throw new InvalidOperationException("Jwt configuration is missing. Configure Jwt via environment variables, user secrets, or appsettings.");
+
+ValidateJwtOptions(jwtOptions);
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -61,7 +64,7 @@ builder.Services
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtOptions.Issuer,
             ValidAudience = jwtOptions.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key ?? throw new InvalidOperationException("Jwt:Key is required.")))
         };
     });
 
@@ -151,3 +154,14 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
+
+static void ValidateJwtOptions(JwtOptions jwtOptions)
+{
+    if (string.IsNullOrWhiteSpace(jwtOptions.Issuer) ||
+        string.IsNullOrWhiteSpace(jwtOptions.Audience) ||
+        string.IsNullOrWhiteSpace(jwtOptions.Key) ||
+        jwtOptions.ExpireMinutes <= 0)
+    {
+        throw new InvalidOperationException("Jwt configuration is incomplete. Set Jwt:Issuer, Jwt:Audience, Jwt:Key, and Jwt:ExpireMinutes.");
+    }
+}
