@@ -6,7 +6,7 @@
 
 <h1 class="h4 mb-3">Create Vehicle</h1>
 
-<form asp-action="Create" method="post">
+<form asp-action="Create" method="post" enctype="multipart/form-data">
     @Html.AntiForgeryToken()
     <partial name="_Form" model="Model" />
 
@@ -18,4 +18,58 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    @* Replace no-api-key with a real TinyMCE API key before production deployment. *@
+    <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin" crossorigin="anonymous"></script>
+    <script>
+        (function () {
+            tinymce.init({
+                selector: '.js-rich-text',
+                height: 320,
+                menubar: false,
+                plugins: 'lists link image table code',
+                toolbar: 'undo redo | blocks | bold italic | bullist numlist | link image | code',
+                branding: false,
+                mobile: {
+                    toolbar_mode: 'sliding'
+                }
+            });
+
+            const galleryInput = document.getElementById('GalleryFiles');
+            const galleryPreview = document.getElementById('galleryPreview');
+            const previewUrls = [];
+
+            function revokePreviewUrls() {
+                while (previewUrls.length > 0) {
+                    URL.revokeObjectURL(previewUrls.pop());
+                }
+            }
+
+            galleryInput?.addEventListener('change', function () {
+                revokePreviewUrls();
+                galleryPreview.innerHTML = '';
+                const files = Array.from(galleryInput.files || []);
+
+                files.forEach(file => {
+                    const objectUrl = URL.createObjectURL(file);
+                    previewUrls.push(objectUrl);
+
+                    const image = document.createElement('img');
+                    image.src = objectUrl;
+                    image.alt = 'Preview';
+                    image.className = 'rounded border';
+                    image.style.width = '120px';
+                    image.style.height = '90px';
+                    image.style.objectFit = 'cover';
+                    image.addEventListener('load', function () {
+                        const index = previewUrls.indexOf(objectUrl);
+                        if (index >= 0) {
+                            previewUrls.splice(index, 1);
+                        }
+                        URL.revokeObjectURL(objectUrl);
+                    }, { once: true });
+                    galleryPreview.appendChild(image);
+                });
+            });
+        })();
+    </script>
 }

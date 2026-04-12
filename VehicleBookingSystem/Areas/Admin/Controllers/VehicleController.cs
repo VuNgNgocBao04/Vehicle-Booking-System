@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using VehicleBookingSystem.Data;
 using VehicleBookingSystem.Models;
+using VehicleBookingSystem.Services;
 using VehicleBookingSystem.ViewModels;
 
 namespace VehicleBookingSystem.Areas.Admin.Controllers;
@@ -13,10 +15,20 @@ namespace VehicleBookingSystem.Areas.Admin.Controllers;
 public class VehicleController : Controller
 {
     private readonly ApplicationDbContext _context;
+    private readonly IFileStorageService _fileStorageService;
+    private readonly IHtmlSanitizerService _htmlSanitizer;
+    private readonly IWebHostEnvironment _environment;
 
-    public VehicleController(ApplicationDbContext context)
+    public VehicleController(
+        ApplicationDbContext context,
+        IFileStorageService fileStorageService,
+        IHtmlSanitizerService htmlSanitizer,
+        IWebHostEnvironment environment)
     {
         _context = context;
+        _fileStorageService = fileStorageService;
+        _htmlSanitizer = htmlSanitizer;
+        _environment = environment;
     }
 
     [HttpGet]
@@ -100,6 +112,8 @@ public class VehicleController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(VehicleFormViewModel form)
     {
+        ValidateGalleryFiles(form.GalleryFiles);
+
         if (!ModelState.IsValid)
         {
             await LoadLookupAsync(form.VehicleCategoryId);
@@ -127,9 +141,28 @@ public class VehicleController : Controller
             FuelType = form.FuelType.Trim(),
             DailyRate = form.DailyRate,
             Status = form.Status,
-            ImageUrl = form.ImageUrl,
-            Description = form.Description
+            Description = _htmlSanitizer.Sanitize(form.Description),
+            BookingPolicyHtml = _htmlSanitizer.Sanitize(form.BookingPolicyHtml)
         };
+
+        try
+        {
+            if (form.GalleryFiles is { Count: > 0 })
+            {
+                var galleryUrls = await _fileStorageService.SaveVehicleGalleryAsync(vehicle.Id, form.GalleryFiles);
+                vehicle.ImageUrl = galleryUrls.FirstOrDefault();
+            }
+            else
+            {
+                vehicle.ImageUrl = form.ImageUrl;
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError(nameof(form.GalleryFiles), ex.Message);
+            await LoadLookupAsync(form.VehicleCategoryId);
+            return View(form);
+        }
 
         _context.Vehicles.Add(vehicle);
         await _context.SaveChangesAsync();
@@ -162,7 +195,9 @@ public class VehicleController : Controller
             DailyRate = vehicle.DailyRate,
             Status = vehicle.Status,
             ImageUrl = vehicle.ImageUrl,
-            Description = vehicle.Description
+            Description = vehicle.Description,
+            BookingPolicyHtml = vehicle.BookingPolicyHtml,
+            ExistingGalleryUrls = BuildGalleryUrls(vehicle.Id)
         };
 
         await LoadLookupAsync(vehicle.VehicleCategoryId);
@@ -177,6 +212,8 @@ public class VehicleController : Controller
         {
             return BadRequest();
         }
+
+        ValidateGalleryFiles(form.GalleryFiles);
 
         if (!ModelState.IsValid)
         {
@@ -212,8 +249,28 @@ public class VehicleController : Controller
         vehicle.FuelType = form.FuelType.Trim();
         vehicle.DailyRate = form.DailyRate;
         vehicle.Status = form.Status;
-        vehicle.ImageUrl = form.ImageUrl;
-        vehicle.Description = form.Description;
+        vehicle.Description = _htmlSanitizer.Sanitize(form.Description);
+        vehicle.BookingPolicyHtml = _htmlSanitizer.Sanitize(form.BookingPolicyHtml);
+
+        try
+        {
+            if (form.GalleryFiles is { Count: > 0 })
+            {
+                var galleryUrls = await _fileStorageService.SaveVehicleGalleryAsync(vehicle.Id, form.GalleryFiles);
+                vehicle.ImageUrl = galleryUrls.FirstOrDefault();
+            }
+            else
+            {
+                vehicle.ImageUrl = form.ImageUrl;
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError(nameof(form.GalleryFiles), ex.Message);
+            form.ExistingGalleryUrls = BuildGalleryUrls(vehicle.Id);
+            await LoadLookupAsync(form.VehicleCategoryId);
+            return View(form);
+        }
 
         await _context.SaveChangesAsync();
         TempData["Message"] = "Vehicle updated successfully.";
@@ -264,6 +321,7 @@ public class VehicleController : Controller
         }
 
         _context.Vehicles.Remove(vehicle);
+        await _fileStorageService.DeleteVehicleGalleryAsync(id);
         await _context.SaveChangesAsync();
 
         TempData["Message"] = "Vehicle deleted successfully.";
@@ -299,6 +357,38 @@ public class VehicleController : Controller
                 Value = ((int)status).ToString(),
                 Selected = selectedStatus == status
             })
+            .ToList();
+    }
+
+    private void ValidateGalleryFiles(IReadOnlyList<IFormFile>? files)
+    {
+        if (files is null || files.Count == 0)
+        {
+            return;
+        }
+
+        var invalid = files.Any(file =>
+            file.Length <= 0 ||
+            file.Length > 5 * 1024 * 1024 ||
+            !new[] { ".jpg", ".jpeg", ".png", ".webp" }.Contains(Path.GetExtension(file.FileName), StringComparer.OrdinalIgnoreCase));
+
+        if (invalid)
+        {
+            ModelState.AddModelError(nameof(VehicleFormViewModel.GalleryFiles), "Chỉ chấp nhận ảnh jpg/png/webp và mỗi file tối đa 5MB.");
+        }
+    }
+
+    private IReadOnlyList<string> BuildGalleryUrls(Guid vehicleId)
+    {
+        var root = Path.Combine(_environment.WebRootPath, "Content", "Images", "Vehicles", vehicleId.ToString("N"));
+        if (!Directory.Exists(root))
+        {
+            return [];
+        }
+
+        return Directory.GetFiles(root)
+            .OrderBy(path => path)
+            .Select(path => $"/Content/Images/Vehicles/{vehicleId:N}/{Path.GetFileName(path)}")
             .ToList();
     }
 }
