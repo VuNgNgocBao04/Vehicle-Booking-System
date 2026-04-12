@@ -58,6 +58,24 @@ public class CustomValidationTests
         Assert.Empty(results);
     }
 
+    [Fact]
+    public void EndDateAfterStartDate_ReturnsSuccess_WhenOnlyOneNullableDateIsMissing()
+    {
+        var model = new NullableDateRangeModel
+        {
+            StartDate = DateTime.Today,
+            EndDate = null
+        };
+
+        var context = new ValidationContext(model);
+        var results = new List<ValidationResult>();
+
+        var valid = Validator.TryValidateObject(model, context, results, validateAllProperties: true);
+
+        Assert.True(valid);
+        Assert.Empty(results);
+    }
+
     private sealed class RegisterAgeModel
     {
         [MinimumAge(18)]

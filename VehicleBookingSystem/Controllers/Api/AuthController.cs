@@ -57,6 +57,7 @@ public class AuthController : ControllerBase
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
         var expires = DateTime.UtcNow.AddMinutes(_jwtOptions.ExpireMinutes);
+        // Jwt options are validated during startup in Program.ValidateJwtOptions.
         var key = _jwtOptions.Key!;
         var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
         var token = new JwtSecurityToken(
