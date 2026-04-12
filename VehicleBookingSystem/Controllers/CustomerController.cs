@@ -33,6 +33,7 @@ public class CustomerController : Controller
         filter.DropoffLocation = string.IsNullOrWhiteSpace(filter.DropoffLocation)
             ? null
             : filter.DropoffLocation.Trim();
+        // TODO: Apply dropoff-area filtering once vehicle service area data is available.
 
         var query = _context.Vehicles
             .AsNoTracking()
@@ -90,7 +91,7 @@ public class CustomerController : Controller
             .Take(pageSize)
             .ToListAsync();
 
-        SaveSearchHistory(filter);
+        await SaveSearchHistoryAsync(filter);
 
         var model = new CustomerVehicleIndexViewModel
         {
@@ -221,7 +222,7 @@ public class CustomerController : Controller
         return PartialView("_VehicleComments", Array.Empty<string>());
     }
 
-    private void SaveSearchHistory(VehicleFilterViewModel filter)
+    private async Task SaveSearchHistoryAsync(VehicleFilterViewModel filter)
     {
         if (string.IsNullOrWhiteSpace(filter.SearchTerm) &&
             string.IsNullOrWhiteSpace(filter.DropoffLocation) &&
@@ -234,12 +235,22 @@ public class CustomerController : Controller
             return;
         }
 
+        var categoryName = "Any";
+        if (filter.VehicleCategoryId.HasValue)
+        {
+            categoryName = await _context.VehicleCategories
+                .AsNoTracking()
+                .Where(item => item.Id == filter.VehicleCategoryId.Value)
+                .Select(item => item.Name)
+                .FirstOrDefaultAsync() ?? "Unknown";
+        }
+
         var history = HttpContext.Session.GetObject<List<VehicleSearchHistoryItem>>(SessionKeys.VehicleSearchHistory) ?? [];
         history.Insert(0, new VehicleSearchHistoryItem
         {
             At = DateTime.UtcNow,
             Keyword = filter.SearchTerm ?? string.Empty,
-            FilterSummary = $"Category: {(filter.VehicleCategoryId?.ToString() ?? "Any")}, Brand: {(filter.Brand ?? "Any")}, Seats: {(filter.SeatCount?.ToString() ?? "Any")}, Rate: {(filter.MinDailyRate?.ToString() ?? "0")} - {(filter.MaxDailyRate?.ToString() ?? "Any")}, Dropoff: {(filter.DropoffLocation ?? "Any")}" 
+            FilterSummary = $"Category: {categoryName}, Brand: {(filter.Brand ?? "Any")}, Seats: {(filter.SeatCount?.ToString() ?? "Any")}, Rate: {(filter.MinDailyRate?.ToString() ?? "0")} - {(filter.MaxDailyRate?.ToString() ?? "Any")}, Dropoff: {(filter.DropoffLocation ?? "Any")} (placeholder - not applied)"
         });
 
         if (history.Count > 10)

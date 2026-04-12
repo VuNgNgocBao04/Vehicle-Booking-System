@@ -73,16 +73,23 @@ public class DashboardController : Controller
             })
             .ToList();
 
-        var bookingByCategory = await _context.Bookings
-            .AsNoTracking()
-            .Where(item => item.CreatedAt >= monthStart)
-            .GroupBy(item => item.Vehicle!.VehicleCategory!.Name ?? "Unknown")
-            .Select(group => new AdminPiePointViewModel
-            {
-                Label = group.Key,
-                Value = group.Count()
-            })
-            .OrderByDescending(item => item.Value)
+        var bookingByCategory = await (
+                from booking in _context.Bookings.AsNoTracking()
+                where booking.CreatedAt >= monthStart
+                join vehicle in _context.Vehicles.AsNoTracking()
+                    on booking.VehicleId equals vehicle.Id into vehicleJoin
+                from vehicle in vehicleJoin.DefaultIfEmpty()
+                join category in _context.VehicleCategories.AsNoTracking()
+                    on vehicle.VehicleCategoryId equals category.Id into categoryJoin
+                from category in categoryJoin.DefaultIfEmpty()
+                group booking by (category != null ? category.Name : "Unknown")
+                into grouped
+                orderby grouped.Count() descending
+                select new AdminPiePointViewModel
+                {
+                    Label = grouped.Key,
+                    Value = grouped.Count()
+                })
             .Take(6)
             .ToListAsync();
 
