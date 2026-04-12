@@ -4,8 +4,9 @@ Hệ thống Quản lý và Đặt xe trực tuyến (Vehicle Booking Management
 
 ## Kiến trúc
 
-Project được dựng bằng ASP.NET Core MVC + Entity Framework Core Code First + SQL Server. `Users` và `Roles` dùng ASP.NET Core Identity, còn `Vehicles`, `Bookings`, `Payments` và `VehicleCategories` là các bảng nghiệp vụ. Cấu hình hiện tại trỏ vào SQL Server Express theo datasource bạn cung cấp và database `QuanLyDatXeNew`.
-Trong môi trường production, migrate/seed khi khởi động đã được tách thành cấu hình riêng, mặc định tắt.
+Project được dựng bằng ASP.NET Core MVC + Entity Framework Core Code First + SQL Server. `Users` và `Roles` dùng ASP.NET Core Identity, còn `Vehicles`, `Bookings`, `Payments` và `VehicleCategories` là các bảng nghiệp vụ.
+
+Ứng dụng đã được chỉnh để mở ổn trong Visual Studio 2022/2025 bằng launch profile trong `VehicleBookingSystem/Properties/launchSettings.json`. Ảnh gallery và avatar không còn phụ thuộc vào working directory hiện tại, nên chạy từ Visual Studio, `dotnet run`, hay IIS Express đều ổn định hơn.
 
 ## ERD
 
@@ -72,8 +73,11 @@ dotnet ef database update
 dotnet run --project VehicleBookingSystem
 ```
 
-Connection string cho môi trường development nằm trong `VehicleBookingSystem/appsettings.Development.json`. Nếu triển khai production, hãy đặt `ConnectionStrings__DefaultConnection` và giữ `StartupOptions:ApplyMigrationsOnStartup`/`StartupOptions:SeedOnStartup` ở `false`.
-Trong môi trường development, hai cờ này cũng đang tắt để app khởi động ổn định khi test trên browser; nếu cần seed dữ liệu, hãy bật lại thủ công và đặt `SeedData:AdminPassword` bằng user-secrets.
+Connection string cho môi trường development nằm trong `VehicleBookingSystem/appsettings.Development.json`. Nếu triển khai production, hãy đặt `ConnectionStrings__DefaultConnection`, `Jwt__Key`, và các biến cấu hình khác qua environment variables hoặc secret store của hạ tầng.
+
+JWT signing key không còn nằm trực tiếp trong source. Ở Development, app sẽ tự sinh key tạm để demo chạy ổn định; ở môi trường khác, bạn phải cấu hình `Jwt__Key` qua user-secrets hoặc môi trường.
+
+Hai cờ `StartupOptions:ApplyMigrationsOnStartup` và `StartupOptions:SeedOnStartup` mặc định tắt để app khởi động ổn định. Nếu cần seed dữ liệu demo, hãy bật lại thủ công và đặt `SeedData:AdminPassword` bằng user-secrets.
 
 ## Frontend UI Smoke Tests (Playwright)
 

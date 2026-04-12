@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -18,15 +19,18 @@ public class AuthController : ControllerBase
     private readonly SignInManager<AppUser> _signInManager;
     private readonly UserManager<AppUser> _userManager;
     private readonly JwtOptions _jwtOptions;
+    private readonly IHostEnvironment _environment;
 
     public AuthController(
         SignInManager<AppUser> signInManager,
         UserManager<AppUser> userManager,
-        IOptions<JwtOptions> jwtOptions)
+        IOptions<JwtOptions> jwtOptions,
+        IHostEnvironment environment)
     {
         _signInManager = signInManager;
         _userManager = userManager;
         _jwtOptions = jwtOptions.Value;
+        _environment = environment;
     }
 
     [HttpPost("token")]
@@ -57,7 +61,7 @@ public class AuthController : ControllerBase
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
         var expires = DateTime.UtcNow.AddMinutes(_jwtOptions.ExpireMinutes);
-        var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.Key));
+        var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.GetSigningKey(_environment)));
         var token = new JwtSecurityToken(
             issuer: _jwtOptions.Issuer,
             audience: _jwtOptions.Audience,

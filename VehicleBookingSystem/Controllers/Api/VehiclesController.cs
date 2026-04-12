@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using VehicleBookingSystem.Contracts.Common;
@@ -17,11 +18,13 @@ public class VehiclesController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly IHtmlSanitizerService _htmlSanitizer;
+    private readonly IWebHostEnvironment _environment;
 
-    public VehiclesController(ApplicationDbContext context, IHtmlSanitizerService htmlSanitizer)
+    public VehiclesController(ApplicationDbContext context, IHtmlSanitizerService htmlSanitizer, IWebHostEnvironment environment)
     {
         _context = context;
         _htmlSanitizer = htmlSanitizer;
+        _environment = environment;
     }
 
     [HttpGet]
@@ -252,10 +255,10 @@ public class VehiclesController : ControllerBase
         };
     }
 
-    private static IReadOnlyList<string> BuildGalleryUrls(Guid vehicleId)
+    private IReadOnlyList<string> BuildGalleryUrls(Guid vehicleId)
     {
         var relativeFolder = Path.Combine("Content", "Images", "Vehicles", vehicleId.ToString("N"));
-        var webRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", relativeFolder);
+        var webRoot = Path.Combine(_environment.WebRootPath, relativeFolder);
         if (!Directory.Exists(webRoot))
         {
             return [];

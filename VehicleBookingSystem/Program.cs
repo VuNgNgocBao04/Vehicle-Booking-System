@@ -30,6 +30,7 @@ builder.Services
     });
 
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+builder.Services.AddProblemDetails();
 
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
@@ -63,6 +64,8 @@ builder.Services
     .AddAuthentication()
     .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
     {
+        var signingKey = jwtOptions.GetSigningKey(builder.Environment);
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -71,7 +74,7 @@ builder.Services
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtOptions.Issuer,
             ValidAudience = jwtOptions.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey))
         };
     });
 
@@ -110,6 +113,9 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 builder.Services.AddSingleton<IHtmlSanitizerService, HtmlSanitizerService>();
+builder.Services.AddScoped<IBookingService, BookingService>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IVehicleService, VehicleService>();
 
 var applyMigrationsOnStartup = builder.Configuration.GetValue<bool>("StartupOptions:ApplyMigrationsOnStartup");
 var seedOnStartup = builder.Configuration.GetValue<bool>("StartupOptions:SeedOnStartup");
@@ -151,11 +157,14 @@ if (applyMigrationsOnStartup || seedOnStartup)
     }
 }
 
+app.UseExceptionHandler("/Home/Error");
+
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
+
+app.UseStatusCodePagesWithReExecute("/Home/Error", "?statusCode={0}");
 
 app.UseHttpsRedirection();
 

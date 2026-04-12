@@ -4,71 +4,35 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using VehicleBookingSystem.Data;
 using VehicleBookingSystem.Extensions;
 using VehicleBookingSystem.Models;
+using VehicleBookingSystem.Services;
 using VehicleBookingSystem.ViewModels;
 
 namespace VehicleBookingSystem.Controllers;
 
 public class BookingController : Controller
 {
-    private readonly ApplicationDbContext _context;
     private readonly UserManager<AppUser> _userManager;
+    private readonly IBookingService _bookingService;
 
-    public BookingController(ApplicationDbContext context, UserManager<AppUser> userManager)
+    public BookingController(UserManager<AppUser> userManager, IBookingService bookingService)
     {
-        _context = context;
         _userManager = userManager;
+        _bookingService = bookingService;
     }
 
     [HttpGet]
     [AllowAnonymous]
     public async Task<IActionResult> Create(Guid vehicleId)
     {
-        var vehicle = await _context.Vehicles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(item => item.Id == vehicleId && item.Status == VehicleStatus.Available);
-
-        if (vehicle is null)
+        var draft = HttpContext.Session.GetObject<BookingDraftSessionModel>(SessionKeys.PendingBookingDraft);
+        var currentUser = User.Identity?.IsAuthenticated == true ? await _userManager.GetUserAsync(User) : null;
+        var model = await _bookingService.BuildCreateViewModelAsync(vehicleId, draft, currentUser);
+        if (model is null)
         {
             return NotFound();
         }
-
-        var draft = HttpContext.Session.GetObject<BookingDraftSessionModel>(SessionKeys.PendingBookingDraft);
-        var model = new BookingCreateViewModel
-        {
-            VehicleId = vehicle.Id,
-            VehicleName = $"{vehicle.Brand} {vehicle.Model}",
-            DailyRate = vehicle.DailyRate,
-            PickupLocation = draft?.PickupLocation ?? string.Empty,
-            DropoffLocation = draft?.DropoffLocation ?? string.Empty,
-            PickupDateTime = draft?.PickupDateTime.Date > DateTime.UtcNow.Date ? draft.PickupDateTime.Date : DateTime.UtcNow.Date.AddDays(1),
-            ReturnDateTime = draft?.ReturnDateTime.Date > DateTime.UtcNow.Date ? draft.ReturnDateTime.Date : DateTime.UtcNow.Date.AddDays(2),
-            PaymentMethod = draft?.PaymentMethod ?? PaymentMethod.Cash,
-            PaymentMethodOptions = BuildPaymentMethodOptions(PaymentMethod.Cash)
-        };
-
-        if (User.Identity?.IsAuthenticated == true)
-        {
-            var user = await _userManager.GetUserAsync(User);
-            if (user is not null)
-            {
-                if (string.IsNullOrWhiteSpace(model.PickupLocation) && !string.IsNullOrWhiteSpace(user.Address))
-                {
-                    model.PickupLocation = user.Address;
-                }
-
-                if (string.IsNullOrWhiteSpace(model.DropoffLocation) && !string.IsNullOrWhiteSpace(user.Address))
-                {
-                    model.DropoffLocation = user.Address;
-                }
-            }
-        }
-
-        model.EstimatedTotalAmount = CalculateTotal(vehicle.DailyRate, model.PickupDateTime, model.ReturnDateTime);
-        model.PaymentMethodOptions = BuildPaymentMethodOptions(model.PaymentMethod);
 
         return View(model);
     }
@@ -78,34 +42,37 @@ public class BookingController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(BookingCreateViewModel model)
     {
-        var vehicle = await _context.Vehicles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(item => item.Id == model.VehicleId);
-
-        if (vehicle is null)
-        {
-            return NotFound();
-        }
-
         if (model.ReturnDateTime <= model.PickupDateTime)
         {
             ModelState.AddModelError(nameof(model.ReturnDateTime), "Return date must be later than pickup date.");
         }
 
-        var available = await IsVehicleAvailableAsync(model.VehicleId, model.PickupDateTime, model.ReturnDateTime);
+        var availability = await _bookingService.CheckAvailabilityAsync(model.VehicleId, model.PickupDateTime, model.ReturnDateTime);
+        var available = availability.IsAvailable;
         if (!available)
         {
             ModelState.AddModelError(string.Empty, "Vehicle is not available in the selected period.");
         }
 
-        model.VehicleName = $"{vehicle.Brand} {vehicle.Model}";
-        model.DailyRate = vehicle.DailyRate;
-        model.EstimatedTotalAmount = CalculateTotal(vehicle.DailyRate, model.PickupDateTime, model.ReturnDateTime);
+        var currentUser = User.Identity?.IsAuthenticated == true ? await _userManager.GetUserAsync(User) : null;
+        var baseModel = await _bookingService.BuildCreateViewModelAsync(model.VehicleId, null, currentUser);
+        if (baseModel is null)
+        {
+            return NotFound();
+        }
+
+        baseModel.PickupLocation = model.PickupLocation;
+        baseModel.DropoffLocation = model.DropoffLocation;
+        baseModel.PickupDateTime = model.PickupDateTime;
+        baseModel.ReturnDateTime = model.ReturnDateTime;
+        baseModel.PaymentMethod = model.PaymentMethod;
+        baseModel.EstimatedTotalAmount = CalculateTotal(baseModel.DailyRate, model.PickupDateTime, model.ReturnDateTime);
         model.PaymentMethodOptions = BuildPaymentMethodOptions(model.PaymentMethod);
 
         if (!ModelState.IsValid)
         {
-            return View(model);
+            baseModel.PaymentMethodOptions = BuildPaymentMethodOptions(model.PaymentMethod);
+            return View(baseModel);
         }
 
         if (User.Identity?.IsAuthenticated != true)
@@ -130,66 +97,17 @@ public class BookingController : Controller
             return Forbid();
         }
 
-        await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-
-        if (!await IsVehicleAvailableAsync(model.VehicleId, model.PickupDateTime, model.ReturnDateTime))
+        var createResult = await _bookingService.CreateAsync(model, parsedUserId, User.Identity?.Name);
+        if (!createResult.Succeeded)
         {
-            await transaction.RollbackAsync();
-            ModelState.AddModelError(string.Empty, "Vehicle is not available in the selected period.");
-            return View(model);
-        }
-
-        var booking = new Booking
-        {
-            Id = Guid.NewGuid(),
-            BookingCode = GenerateBookingCode(),
-            UserId = parsedUserId,
-            VehicleId = model.VehicleId,
-            PickupLocation = model.PickupLocation.Trim(),
-            DropoffLocation = model.DropoffLocation.Trim(),
-            PickupDateTime = model.PickupDateTime,
-            ReturnDateTime = model.ReturnDateTime,
-            TotalAmount = model.EstimatedTotalAmount,
-            Status = BookingStatus.Pending,
-            CreatedAt = DateTime.UtcNow,
-            Payment = new Payment
-            {
-                Id = Guid.NewGuid(),
-                PaymentMethod = model.PaymentMethod,
-                Status = PaymentStatus.Pending,
-                PaidAmount = model.EstimatedTotalAmount
-            },
-            StatusHistories =
-            [
-                new BookingStatusHistory
-                {
-                    Id = Guid.NewGuid(),
-                    FromStatus = null,
-                    ToStatus = BookingStatus.Pending,
-                    ChangedAtUtc = DateTime.UtcNow,
-                    ChangedBy = User.Identity?.Name ?? "Customer",
-                    Note = "Booking created"
-                }
-            ]
-        };
-
-        _context.Bookings.Add(booking);
-
-        try
-        {
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-        }
-        catch (DbUpdateException)
-        {
-            await transaction.RollbackAsync();
-            ModelState.AddModelError(string.Empty, "Unable to create booking right now. Please try again.");
-            return View(model);
+            ModelState.AddModelError(string.Empty, createResult.ErrorMessage ?? "Unable to create booking right now. Please try again.");
+            baseModel.PaymentMethodOptions = BuildPaymentMethodOptions(model.PaymentMethod);
+            return View(baseModel);
         }
 
         HttpContext.Session.Remove(SessionKeys.PendingBookingDraft);
         TempData["Message"] = "Booking created successfully.";
-        return RedirectToAction(nameof(Success), new { id = booking.Id });
+        return RedirectToAction(nameof(Success), new { id = createResult.BookingId!.Value });
     }
 
     [HttpGet]
@@ -202,10 +120,7 @@ public class BookingController : Controller
             return Forbid();
         }
 
-        var booking = await _context.Bookings
-            .AsNoTracking()
-            .Include(item => item.Vehicle)
-            .FirstOrDefaultAsync(item => item.Id == id && item.UserId == parsedUserId);
+        var booking = await _bookingService.GetSuccessAsync(id, parsedUserId);
 
         if (booking is null)
         {
@@ -225,47 +140,7 @@ public class BookingController : Controller
             return Forbid();
         }
 
-        var query = _context.Bookings
-            .AsNoTracking()
-            .Include(booking => booking.Vehicle)
-            .Where(booking => booking.UserId == parsedUserId)
-            .AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(searchTerm))
-        {
-            var keyword = searchTerm.Trim();
-            query = query.Where(booking =>
-                booking.BookingCode.Contains(keyword) ||
-                (booking.Vehicle != null && booking.Vehicle.LicensePlate.Contains(keyword)));
-        }
-
-        if (status.HasValue)
-        {
-            query = query.Where(booking => booking.Status == status.Value);
-        }
-
-        var totalItems = await query.CountAsync();
-        page = Math.Max(1, page);
-        pageSize = pageSize <= 0 ? 8 : pageSize;
-
-        var items = await query
-            .OrderByDescending(booking => booking.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        var model = new BookingHistoryIndexViewModel
-        {
-            SearchTerm = searchTerm,
-            Status = status,
-            Bookings = new PagedResult<Booking>
-            {
-                Items = items,
-                Page = page,
-                PageSize = pageSize,
-                TotalItems = totalItems
-            }
-        };
+        var model = await _bookingService.BuildHistoryAsync(parsedUserId, searchTerm, status, page, pageSize);
 
         return View(model);
     }
@@ -280,11 +155,7 @@ public class BookingController : Controller
             return Forbid();
         }
 
-        var booking = await _context.Bookings
-            .AsNoTracking()
-            .Include(item => item.Vehicle)
-            .Include(item => item.Payment)
-            .FirstOrDefaultAsync(item => item.Id == id && item.UserId == parsedUserId);
+        var booking = await _bookingService.GetDetailsAsync(id, parsedUserId);
 
         if (booking is null)
         {
@@ -305,37 +176,10 @@ public class BookingController : Controller
             return Forbid();
         }
 
-        var booking = await _context.Bookings.FirstOrDefaultAsync(item => item.Id == id && item.UserId == parsedUserId);
-        if (booking is null)
+        var result = await _bookingService.CancelAsync(id, parsedUserId, User.Identity?.Name);
+        if (!result.Succeeded)
         {
-            return NotFound();
-        }
-
-        if (booking.PickupDateTime <= DateTime.UtcNow.AddHours(6))
-        {
-            TempData["Error"] = "Booking can only be cancelled at least 6 hours before pickup time.";
-            return RedirectToAction(nameof(MyBookings));
-        }
-
-        var fromStatus = booking.Status;
-        booking.Status = BookingStatus.Cancelled;
-        booking.StatusHistories.Add(new BookingStatusHistory
-        {
-            Id = Guid.NewGuid(),
-            FromStatus = fromStatus,
-            ToStatus = BookingStatus.Cancelled,
-            ChangedAtUtc = DateTime.UtcNow,
-            ChangedBy = User.Identity?.Name ?? "Customer",
-            Note = "Customer cancelled booking"
-        });
-
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            TempData["Error"] = "Booking was updated by another request. Please refresh and try again.";
+            TempData["Error"] = result.ErrorMessage ?? "Unable to cancel booking.";
             return RedirectToAction(nameof(MyBookings));
         }
 
@@ -347,44 +191,13 @@ public class BookingController : Controller
     [AllowAnonymous]
     public async Task<IActionResult> CheckAvailability(Guid vehicleId, DateTime pickupDateTime, DateTime returnDateTime)
     {
-        if (returnDateTime <= pickupDateTime)
-        {
-            return Json(new { available = false, message = "Return date must be later than pickup date." });
-        }
-
-        var vehicle = await _context.Vehicles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(item => item.Id == vehicleId);
-
-        if (vehicle is null)
-        {
-            return Json(new { available = false, message = "Vehicle not found." });
-        }
-
-        var available = await IsVehicleAvailableAsync(vehicleId, pickupDateTime, returnDateTime);
-        var total = CalculateTotal(vehicle.DailyRate, pickupDateTime, returnDateTime);
+        var availability = await _bookingService.CheckAvailabilityAsync(vehicleId, pickupDateTime, returnDateTime);
         return Json(new
         {
-            available,
-            message = available ? "Vehicle is available." : "Vehicle is already booked in this range.",
-            totalAmount = total
+            available = availability.IsAvailable,
+            message = availability.Message,
+            totalAmount = availability.TotalAmount
         });
-    }
-
-    private async Task<bool> IsVehicleAvailableAsync(Guid vehicleId, DateTime pickupDateTime, DateTime returnDateTime)
-    {
-        return !await _context.Bookings.AnyAsync(booking =>
-            booking.VehicleId == vehicleId &&
-            booking.Status != BookingStatus.Cancelled &&
-            booking.Status != BookingStatus.Rejected &&
-            booking.Status != BookingStatus.Completed &&
-            pickupDateTime < booking.ReturnDateTime &&
-            returnDateTime > booking.PickupDateTime);
-    }
-
-    private static string GenerateBookingCode()
-    {
-        return $"BK-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
     }
 
     private static decimal CalculateTotal(decimal dailyRate, DateTime pickupDateTime, DateTime returnDateTime)

@@ -6,8 +6,8 @@ using System.Globalization;
 using System.Text;
 using VehicleBookingSystem.Data;
 using VehicleBookingSystem.Models;
-using VehicleBookingSystem.Services;
 using VehicleBookingSystem.ViewModels;
+using VehicleBookingSystem.Services;
 
 namespace VehicleBookingSystem.Areas.Admin.Controllers;
 
@@ -16,17 +16,14 @@ namespace VehicleBookingSystem.Areas.Admin.Controllers;
 public class VehicleController : Controller
 {
     private readonly ApplicationDbContext _context;
-    private readonly IFileStorageService _fileStorageService;
-    private readonly IHtmlSanitizerService _htmlSanitizer;
+    private readonly IVehicleService _vehicleService;
 
     public VehicleController(
         ApplicationDbContext context,
-        IFileStorageService fileStorageService,
-        IHtmlSanitizerService htmlSanitizer)
+        IVehicleService vehicleService)
     {
         _context = context;
-        _fileStorageService = fileStorageService;
-        _htmlSanitizer = htmlSanitizer;
+        _vehicleService = vehicleService;
     }
 
     [HttpGet]
@@ -134,25 +131,11 @@ public class VehicleController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteAjax(Guid id)
     {
-        var vehicle = await _context.Vehicles.FindAsync(id);
-        if (vehicle is null)
+        var result = await _vehicleService.DeleteAsync(id);
+        if (!result.Succeeded)
         {
-            return NotFound(new { success = false, message = "Vehicle not found." });
+            return BadRequest(new { success = false, message = result.ErrorMessage ?? "Unable to delete vehicle." });
         }
-
-        var hasActiveBookings = await _context.Bookings.AnyAsync(booking =>
-            booking.VehicleId == id &&
-            (booking.Status == BookingStatus.Pending || booking.Status == BookingStatus.Confirmed) &&
-            booking.ReturnDateTime >= DateTime.UtcNow);
-
-        if (hasActiveBookings)
-        {
-            return BadRequest(new { success = false, message = "Cannot delete this vehicle because it has active bookings." });
-        }
-
-        _context.Vehicles.Remove(vehicle);
-        await _fileStorageService.DeleteVehicleGalleryAsync(id);
-        await _context.SaveChangesAsync();
 
         return Json(new { success = true, message = "Vehicle deleted successfully." });
     }
@@ -166,34 +149,23 @@ public class VehicleController : Controller
             return BadRequest(new { success = false, message = "No vehicles selected." });
         }
 
-        var vehicles = await _context.Vehicles.Where(vehicle => ids.Contains(vehicle.Id)).ToListAsync();
         var skipped = 0;
 
-        foreach (var vehicle in vehicles)
+        foreach (var vehicleId in ids)
         {
-            var hasActiveBookings = await _context.Bookings.AnyAsync(booking =>
-                booking.VehicleId == vehicle.Id &&
-                (booking.Status == BookingStatus.Pending || booking.Status == BookingStatus.Confirmed) &&
-                booking.ReturnDateTime >= DateTime.UtcNow);
-
-            if (hasActiveBookings)
+            var result = await _vehicleService.DeleteAsync(vehicleId);
+            if (!result.Succeeded)
             {
                 skipped++;
-                continue;
             }
-
-            _context.Vehicles.Remove(vehicle);
-            await _fileStorageService.DeleteVehicleGalleryAsync(vehicle.Id);
         }
-
-        await _context.SaveChangesAsync();
 
         return Json(new
         {
             success = true,
             message = skipped > 0
-                ? $"Deleted {vehicles.Count - skipped} vehicle(s). Skipped {skipped} active vehicle(s)."
-                : $"Deleted {vehicles.Count} vehicle(s)."
+                ? $"Deleted {ids.Count - skipped} vehicle(s). Skipped {skipped} active vehicle(s)."
+                : $"Deleted {ids.Count} vehicle(s)."
         });
     }
 
@@ -271,45 +243,13 @@ public class VehicleController : Controller
             return View(form);
         }
 
-        var vehicle = new Vehicle
+        var createResult = await _vehicleService.CreateAsync(form);
+        if (!createResult.Succeeded)
         {
-            Id = Guid.NewGuid(),
-            VehicleCategoryId = form.VehicleCategoryId,
-            Code = form.Code.Trim(),
-            Brand = form.Brand.Trim(),
-            Model = form.Model.Trim(),
-            LicensePlate = form.LicensePlate.Trim(),
-            SeatCount = form.SeatCount,
-            Color = form.Color.Trim(),
-            Transmission = form.Transmission.Trim(),
-            FuelType = form.FuelType.Trim(),
-            DailyRate = form.DailyRate,
-            Status = form.Status,
-            Description = _htmlSanitizer.Sanitize(form.Description),
-            BookingPolicyHtml = _htmlSanitizer.Sanitize(form.BookingPolicyHtml)
-        };
-
-        try
-        {
-            if (form.GalleryFiles is { Count: > 0 })
-            {
-                var galleryUrls = await _fileStorageService.SaveVehicleGalleryAsync(vehicle.Id, form.GalleryFiles);
-                vehicle.ImageUrl = galleryUrls.FirstOrDefault();
-            }
-            else
-            {
-                vehicle.ImageUrl = form.ImageUrl;
-            }
-        }
-        catch (InvalidOperationException ex)
-        {
-            ModelState.AddModelError(nameof(form.GalleryFiles), ex.Message);
+            ModelState.AddModelError(string.Empty, createResult.ErrorMessage ?? "Unable to create vehicle.");
             await LoadLookupAsync(form.VehicleCategoryId);
             return View(form);
         }
-
-        _context.Vehicles.Add(vehicle);
-        await _context.SaveChangesAsync();
 
         TempData["Message"] = "Vehicle created successfully.";
         return RedirectToAction(nameof(Index));
@@ -318,33 +258,13 @@ public class VehicleController : Controller
     [HttpGet]
     public async Task<IActionResult> Edit(Guid id)
     {
-        var vehicle = await _context.Vehicles.FindAsync(id);
-        if (vehicle is null)
+        var model = await _vehicleService.BuildEditViewModelAsync(id);
+        if (model is null)
         {
             return NotFound();
         }
 
-        var model = new VehicleFormViewModel
-        {
-            Id = vehicle.Id,
-            VehicleCategoryId = vehicle.VehicleCategoryId,
-            Code = vehicle.Code,
-            Brand = vehicle.Brand,
-            Model = vehicle.Model,
-            LicensePlate = vehicle.LicensePlate,
-            SeatCount = vehicle.SeatCount,
-            Color = vehicle.Color,
-            Transmission = vehicle.Transmission,
-            FuelType = vehicle.FuelType,
-            DailyRate = vehicle.DailyRate,
-            Status = vehicle.Status,
-            ImageUrl = vehicle.ImageUrl,
-            Description = vehicle.Description,
-            BookingPolicyHtml = vehicle.BookingPolicyHtml,
-            ExistingGalleryUrls = BuildGalleryUrls(vehicle.Id)
-        };
-
-        await LoadLookupAsync(vehicle.VehicleCategoryId);
+        await LoadLookupAsync(model.VehicleCategoryId);
         return View(model);
     }
 
@@ -365,58 +285,13 @@ public class VehicleController : Controller
             return View(form);
         }
 
-        var vehicle = await _context.Vehicles.FindAsync(id);
-        if (vehicle is null)
+        var updateResult = await _vehicleService.UpdateAsync(id, form);
+        if (!updateResult.Succeeded)
         {
-            return NotFound();
-        }
-
-        var duplicateExists = await _context.Vehicles.AnyAsync(item =>
-            item.Id != id &&
-            (item.Code == form.Code || item.LicensePlate == form.LicensePlate));
-
-        if (duplicateExists)
-        {
-            ModelState.AddModelError(string.Empty, "Vehicle code or license plate already exists.");
+            ModelState.AddModelError(string.Empty, updateResult.ErrorMessage ?? "Unable to update vehicle.");
             await LoadLookupAsync(form.VehicleCategoryId);
             return View(form);
         }
-
-        vehicle.VehicleCategoryId = form.VehicleCategoryId;
-        vehicle.Code = form.Code.Trim();
-        vehicle.Brand = form.Brand.Trim();
-        vehicle.Model = form.Model.Trim();
-        vehicle.LicensePlate = form.LicensePlate.Trim();
-        vehicle.SeatCount = form.SeatCount;
-        vehicle.Color = form.Color.Trim();
-        vehicle.Transmission = form.Transmission.Trim();
-        vehicle.FuelType = form.FuelType.Trim();
-        vehicle.DailyRate = form.DailyRate;
-        vehicle.Status = form.Status;
-        vehicle.Description = _htmlSanitizer.Sanitize(form.Description);
-        vehicle.BookingPolicyHtml = _htmlSanitizer.Sanitize(form.BookingPolicyHtml);
-
-        try
-        {
-            if (form.GalleryFiles is { Count: > 0 })
-            {
-                var galleryUrls = await _fileStorageService.SaveVehicleGalleryAsync(vehicle.Id, form.GalleryFiles);
-                vehicle.ImageUrl = galleryUrls.FirstOrDefault();
-            }
-            else
-            {
-                vehicle.ImageUrl = form.ImageUrl;
-            }
-        }
-        catch (InvalidOperationException ex)
-        {
-            ModelState.AddModelError(nameof(form.GalleryFiles), ex.Message);
-            form.ExistingGalleryUrls = BuildGalleryUrls(vehicle.Id);
-            await LoadLookupAsync(form.VehicleCategoryId);
-            return View(form);
-        }
-
-        await _context.SaveChangesAsync();
         TempData["Message"] = "Vehicle updated successfully.";
         return RedirectToAction(nameof(Index));
     }
@@ -447,26 +322,12 @@ public class VehicleController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
-        var vehicle = await _context.Vehicles.FindAsync(id);
-        if (vehicle is null)
+        var result = await _vehicleService.DeleteAsync(id);
+        if (!result.Succeeded)
         {
-            return NotFound();
-        }
-
-        var hasActiveBookings = await _context.Bookings.AnyAsync(booking =>
-            booking.VehicleId == id &&
-            (booking.Status == BookingStatus.Pending || booking.Status == BookingStatus.Confirmed) &&
-            booking.ReturnDateTime >= DateTime.UtcNow);
-
-        if (hasActiveBookings)
-        {
-            TempData["Error"] = "Cannot delete this vehicle because it has active bookings.";
+            TempData["Error"] = result.ErrorMessage ?? "Unable to delete vehicle.";
             return RedirectToAction(nameof(Delete), new { id });
         }
-
-        _context.Vehicles.Remove(vehicle);
-        await _fileStorageService.DeleteVehicleGalleryAsync(id);
-        await _context.SaveChangesAsync();
 
         TempData["Message"] = "Vehicle deleted successfully.";
         return RedirectToAction(nameof(Index));
@@ -520,20 +381,6 @@ public class VehicleController : Controller
         {
             ModelState.AddModelError(nameof(VehicleFormViewModel.GalleryFiles), "Chỉ chấp nhận ảnh jpg/png/webp và mỗi file tối đa 5MB.");
         }
-    }
-
-    private static IReadOnlyList<string> BuildGalleryUrls(Guid vehicleId)
-    {
-        var root = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Content", "Images", "Vehicles", vehicleId.ToString("N"));
-        if (!Directory.Exists(root))
-        {
-            return [];
-        }
-
-        return Directory.GetFiles(root)
-            .OrderBy(path => path)
-            .Select(path => $"/Content/Images/Vehicles/{vehicleId:N}/{Path.GetFileName(path)}")
-            .ToList();
     }
 
     private static int ParseInt(string? raw, int fallback)

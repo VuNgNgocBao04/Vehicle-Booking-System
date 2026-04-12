@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Moq;
@@ -15,7 +16,8 @@ public class AdminVehicleControllerTests
     {
         await using var context = BuildContext(nameof(Create_ReturnsView_WhenModelInvalid));
         var fileStorageMock = new Mock<IFileStorageService>();
-        var controller = new VehicleController(context, fileStorageMock.Object, new HtmlSanitizerService());
+        var vehicleService = new VehicleService(context, fileStorageMock.Object, new HtmlSanitizerService(), BuildEnvironment());
+        var controller = new VehicleController(context, vehicleService);
         controller.ModelState.AddModelError("Code", "invalid");
 
         var result = await controller.Create(new VehicleFormViewModel());
@@ -30,5 +32,12 @@ public class AdminVehicleControllerTests
             .Options;
 
         return new ApplicationDbContext(options);
+    }
+
+    private static IWebHostEnvironment BuildEnvironment()
+    {
+        var environment = new Mock<IWebHostEnvironment>();
+        environment.SetupGet(item => item.WebRootPath).Returns(Path.GetTempPath());
+        return environment.Object;
     }
 }
