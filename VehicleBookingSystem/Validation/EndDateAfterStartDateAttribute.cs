@@ -30,6 +30,11 @@ public sealed class EndDateAfterStartDateAttribute : ValidationAttribute
         var startValue = startProperty.GetValue(validationContext.ObjectInstance);
         var endValue = endProperty.GetValue(validationContext.ObjectInstance);
 
+        if (startValue is null || endValue is null)
+        {
+            return ValidationResult.Success;
+        }
+
         if (startValue is not DateTime startDate || endValue is not DateTime endDate)
         {
             return new ValidationResult("Cấu hình xác thực ngày không hợp lệ.");

@@ -102,10 +102,10 @@ public class AccountController : Controller
                 }
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             await _userManager.DeleteAsync(user);
-            ModelState.AddModelError(nameof(model.AvatarFile), ex is InvalidOperationException ? ex.Message : "Không thể lưu ảnh đại diện. Vui lòng thử lại với một file ảnh hợp lệ.");
+            ModelState.AddModelError(nameof(model.AvatarFile), ex.Message);
             return View(model);
         }
 

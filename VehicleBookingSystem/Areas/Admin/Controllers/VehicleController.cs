@@ -157,9 +157,9 @@ public class VehicleController : Controller
                 vehicle.ImageUrl = form.ImageUrl;
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            ModelState.AddModelError(nameof(form.GalleryFiles), ex is InvalidOperationException ? ex.Message : "Không thể lưu ảnh xe. Vui lòng thử lại với file ảnh hợp lệ.");
+            ModelState.AddModelError(nameof(form.GalleryFiles), ex.Message);
             await LoadLookupAsync(form.VehicleCategoryId);
             return View(form);
         }
@@ -264,9 +264,9 @@ public class VehicleController : Controller
                 vehicle.ImageUrl = form.ImageUrl;
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            ModelState.AddModelError(nameof(form.GalleryFiles), ex is InvalidOperationException ? ex.Message : "Không thể lưu ảnh xe. Vui lòng thử lại với file ảnh hợp lệ.");
+            ModelState.AddModelError(nameof(form.GalleryFiles), ex.Message);
             form.ExistingGalleryUrls = BuildGalleryUrls(vehicle.Id);
             await LoadLookupAsync(form.VehicleCategoryId);
             return View(form);
