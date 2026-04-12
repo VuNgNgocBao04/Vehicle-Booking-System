@@ -76,9 +76,7 @@ public class DashboardController : Controller
         var bookingByCategory = await _context.Bookings
             .AsNoTracking()
             .Where(item => item.CreatedAt >= monthStart)
-            .GroupBy(item => item.Vehicle != null && item.Vehicle.VehicleCategory != null
-                ? item.Vehicle.VehicleCategory.Name
-                : "Unknown")
+            .GroupBy(item => item.Vehicle!.VehicleCategory!.Name ?? "Unknown")
             .Select(group => new AdminPiePointViewModel
             {
                 Label = group.Key,

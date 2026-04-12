@@ -30,6 +30,9 @@ public class CustomerController : Controller
         filter.PageSize = filter.PageSize <= 0 ? 9 : Math.Min(filter.PageSize, 24);
         filter.SortBy = NormalizeSort(filter.SortBy);
         filter.ViewMode = NormalizeViewMode(filter.ViewMode);
+        filter.DropoffLocation = string.IsNullOrWhiteSpace(filter.DropoffLocation)
+            ? null
+            : filter.DropoffLocation.Trim();
 
         var query = _context.Vehicles
             .AsNoTracking()
@@ -221,6 +224,7 @@ public class CustomerController : Controller
     private void SaveSearchHistory(VehicleFilterViewModel filter)
     {
         if (string.IsNullOrWhiteSpace(filter.SearchTerm) &&
+            string.IsNullOrWhiteSpace(filter.DropoffLocation) &&
             !filter.VehicleCategoryId.HasValue &&
             string.IsNullOrWhiteSpace(filter.Brand) &&
             !filter.MinDailyRate.HasValue &&
@@ -235,7 +239,7 @@ public class CustomerController : Controller
         {
             At = DateTime.UtcNow,
             Keyword = filter.SearchTerm ?? string.Empty,
-            FilterSummary = $"Category: {(filter.VehicleCategoryId?.ToString() ?? "Any")}, Brand: {(filter.Brand ?? "Any")}, Seats: {(filter.SeatCount?.ToString() ?? "Any")}, Rate: {(filter.MinDailyRate?.ToString() ?? "0")} - {(filter.MaxDailyRate?.ToString() ?? "Any")}" 
+            FilterSummary = $"Category: {(filter.VehicleCategoryId?.ToString() ?? "Any")}, Brand: {(filter.Brand ?? "Any")}, Seats: {(filter.SeatCount?.ToString() ?? "Any")}, Rate: {(filter.MinDailyRate?.ToString() ?? "0")} - {(filter.MaxDailyRate?.ToString() ?? "Any")}, Dropoff: {(filter.DropoffLocation ?? "Any")}" 
         });
 
         if (history.Count > 10)
