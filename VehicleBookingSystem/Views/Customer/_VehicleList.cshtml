@@ -21,7 +21,7 @@
                         <p class="mb-2"><strong>Status:</strong> @vehicle.Status</p>
                         @if (!string.IsNullOrWhiteSpace(vehicle.Description))
                         {
-                            <p class="text-muted small">@vehicle.Description</p>
+                            <div class="text-muted small">@Html.Raw(vehicle.Description)</div>
                         }
                         <div class="d-flex gap-2">
                             <a class="btn btn-sm btn-primary" asp-controller="Booking" asp-action="Create" asp-route-vehicleId="@vehicle.Id">Book now</a>

@@ -6,7 +6,7 @@
 
 <h1 class="h4 mb-3">Edit Vehicle</h1>
 
-<form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="Id" />
     <partial name="_Form" model="Model" />
@@ -19,4 +19,39 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+    <script>
+        (function () {
+            tinymce.init({
+                selector: '.js-rich-text',
+                height: 320,
+                menubar: false,
+                plugins: 'lists link image table code',
+                toolbar: 'undo redo | blocks | bold italic | bullist numlist | link image | code',
+                branding: false,
+                mobile: {
+                    toolbar_mode: 'sliding'
+                }
+            });
+
+            const galleryInput = document.getElementById('GalleryFiles');
+            const galleryPreview = document.getElementById('galleryPreview');
+
+            galleryInput?.addEventListener('change', function () {
+                galleryPreview.innerHTML = '';
+                const files = Array.from(galleryInput.files || []);
+
+                files.forEach(file => {
+                    const image = document.createElement('img');
+                    image.src = URL.createObjectURL(file);
+                    image.alt = 'Preview';
+                    image.className = 'rounded border';
+                    image.style.width = '120px';
+                    image.style.height = '90px';
+                    image.style.objectFit = 'cover';
+                    galleryPreview.appendChild(image);
+                });
+            });
+        })();
+    </script>
 }
