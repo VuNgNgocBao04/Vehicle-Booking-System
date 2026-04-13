@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using VehicleBookingSystem.Data;
 using VehicleBookingSystem.Extensions;
 using VehicleBookingSystem.Models;
 using VehicleBookingSystem.Services;
@@ -11,17 +13,19 @@ namespace VehicleBookingSystem.Controllers;
 public class CustomerController : Controller
 {
     private readonly ICustomerService _customerService;
+    private readonly ApplicationDbContext _context;
 
-    public CustomerController(ICustomerService customerService)
+    public CustomerController(ICustomerService customerService, ApplicationDbContext context)
     {
         _customerService = customerService;
+        _context = context;
     }
 
     [HttpGet]
     [AllowAnonymous]
     public async Task<IActionResult> Index([FromQuery] VehicleFilterViewModel filter)
     {
-        SaveSearchHistory(filter);
+        await SaveSearchHistoryAsync(filter);
         var history = HttpContext.Session.GetObject<List<VehicleSearchHistoryItem>>(SessionKeys.VehicleSearchHistory) ?? [];
         var model = await _customerService.BuildIndexAsync(filter, history);
 
@@ -67,7 +71,7 @@ public class CustomerController : Controller
         return PartialView("_VehicleComments", Array.Empty<string>());
     }
 
-    private void SaveSearchHistory(VehicleFilterViewModel filter)
+    private async Task SaveSearchHistoryAsync(VehicleFilterViewModel filter)
     {
         if (string.IsNullOrWhiteSpace(filter.SearchTerm) &&
             !filter.VehicleCategoryId.HasValue &&
@@ -79,12 +83,21 @@ public class CustomerController : Controller
             return;
         }
 
+        var categoryName = "Any";
+        if (filter.VehicleCategoryId.HasValue)
+        {
+            categoryName = await _context.VehicleCategories
+                .Where(c => c.Id == filter.VehicleCategoryId.Value)
+                .Select(c => c.Name)
+                .FirstOrDefaultAsync() ?? "Any";
+        }
+
         var history = HttpContext.Session.GetObject<List<VehicleSearchHistoryItem>>(SessionKeys.VehicleSearchHistory) ?? [];
         history.Insert(0, new VehicleSearchHistoryItem
         {
             At = DateTime.UtcNow,
             Keyword = filter.SearchTerm ?? string.Empty,
-            FilterSummary = $"Category: {(filter.VehicleCategoryId?.ToString() ?? "Any")}, Brand: {(filter.Brand ?? "Any")}, Seats: {(filter.SeatCount?.ToString() ?? "Any")}, Rate: {(filter.MinDailyRate?.ToString() ?? "0")} - {(filter.MaxDailyRate?.ToString() ?? "Any")}" 
+            FilterSummary = $"Category: {categoryName}, Brand: {(filter.Brand ?? "Any")}, Seats: {(filter.SeatCount?.ToString() ?? "Any")}, Rate: {(filter.MinDailyRate?.ToString() ?? "0")} - {(filter.MaxDailyRate?.ToString() ?? "Any")}" 
         });
 
         if (history.Count > 10)

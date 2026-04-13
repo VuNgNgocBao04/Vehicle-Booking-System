@@ -48,6 +48,12 @@ public sealed class CustomerService : ICustomerService
             query = query.Where(vehicle => vehicle.Brand == filter.Brand.Trim());
         }
 
+        if (!string.IsNullOrWhiteSpace(filter.DropoffLocation))
+        {
+            var location = filter.DropoffLocation.Trim();
+            query = query.Where(vehicle => vehicle.DropoffLocation != null && vehicle.DropoffLocation.Contains(location));
+        }
+
         if (filter.MinDailyRate.HasValue)
         {
             query = query.Where(vehicle => vehicle.DailyRate >= filter.MinDailyRate.Value);

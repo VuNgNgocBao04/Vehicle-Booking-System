@@ -44,16 +44,32 @@ public sealed class AdminDashboardService : IAdminDashboardService
             .Distinct()
             .Count(userId => !historicalUsers.Contains(userId));
 
+        // Calculate revenue for 6 months in a single query instead of 6 separate queries
+        var sixMonthsAgo = monthStart.AddMonths(-5);
+        var revenueData = await _context.Payments
+            .AsNoTracking()
+            .Where(item => item.Status == PaymentStatus.Paid &&
+                           item.PaidAt.HasValue &&
+                           item.PaidAt.Value >= sixMonthsAgo &&
+                           item.PaidAt.Value < monthStart.AddMonths(1))
+            .GroupBy(item => new { item.PaidAt!.Value.Year, item.PaidAt!.Value.Month })
+            .Select(group => new
+            {
+                Year = group.Key.Year,
+                Month = group.Key.Month,
+                Amount = group.Sum(item => (decimal?)item.PaidAmount) ?? 0
+            })
+            .OrderBy(item => item.Year)
+            .ThenBy(item => item.Month)
+            .ToListAsync(cancellationToken);
+
         var revenueByMonth = new List<AdminMetricPointViewModel>();
         foreach (var start in Enumerable.Range(0, 6).Select(offset => monthStart.AddMonths(-5 + offset)))
         {
-            var amount = await _context.Payments
-                .Where(item => item.Status == PaymentStatus.Paid &&
-                               item.PaidAt.HasValue &&
-                               item.PaidAt.Value.Year == start.Year &&
-                               item.PaidAt.Value.Month == start.Month)
-                .Select(item => (decimal?)item.PaidAmount)
-                .SumAsync(cancellationToken) ?? 0;
+            var amount = revenueData
+                .Where(item => item.Year == start.Year && item.Month == start.Month)
+                .Select(item => item.Amount)
+                .FirstOrDefault();
 
             revenueByMonth.Add(new AdminMetricPointViewModel
             {
@@ -62,21 +78,21 @@ public sealed class AdminDashboardService : IAdminDashboardService
             });
         }
 
-        var bookingByCategory = _context.Bookings
+        // Move GroupBy to SQL to avoid loading all bookings into memory
+        var bookingByCategory = await _context.Bookings
             .AsNoTracking()
             .Include(item => item.Vehicle)
             .ThenInclude(item => item!.VehicleCategory)
             .Where(item => item.CreatedAt >= monthStart)
-            .AsEnumerable()
-            .GroupBy(item => item.Vehicle?.VehicleCategory?.Name ?? "Unknown")
+            .GroupBy(item => item.Vehicle!.VehicleCategory!.Name)
             .Select(group => new AdminPiePointViewModel
             {
-                Label = group.Key,
+                Label = group.Key ?? "Unknown",
                 Value = group.Count()
             })
             .OrderByDescending(item => item.Value)
             .Take(6)
-            .ToList();
+            .ToListAsync(cancellationToken);
 
         var recentPending = await _context.Bookings
             .AsNoTracking()

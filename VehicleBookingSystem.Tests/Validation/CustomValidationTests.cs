@@ -45,6 +45,46 @@ public class CustomValidationTests
         Assert.Contains(results, result => result.ErrorMessage!.Contains("Ngày kết thúc"));
     }
 
+    [Fact]
+    public void EndDateAfterStartDate_ReturnsSuccess_WhenNullableDatesAreMissing()
+    {
+        using var cultureScope = new CultureScope("vi-VN");
+
+        var model = new NullableDateRangeModel
+        {
+            StartDate = null,
+            EndDate = null
+        };
+
+        var context = new ValidationContext(model);
+        var results = new List<ValidationResult>();
+
+        var valid = Validator.TryValidateObject(model, context, results, validateAllProperties: true);
+
+        Assert.True(valid);
+        Assert.Empty(results);
+    }
+
+    [Fact]
+    public void EndDateAfterStartDate_ReturnsSuccess_WhenOnlyOneNullableDateIsMissing()
+    {
+        using var cultureScope = new CultureScope("vi-VN");
+
+        var model = new NullableDateRangeModel
+        {
+            StartDate = DateTime.Today.AddDays(1),
+            EndDate = null
+        };
+
+        var context = new ValidationContext(model);
+        var results = new List<ValidationResult>();
+
+        var valid = Validator.TryValidateObject(model, context, results, validateAllProperties: true);
+
+        Assert.True(valid);
+        Assert.Empty(results);
+    }
+
     private sealed class CultureScope : IDisposable
     {
         private readonly CultureInfo _originalCulture;
@@ -78,5 +118,12 @@ public class CustomValidationTests
     {
         public DateTime StartDate { get; init; }
         public DateTime EndDate { get; init; }
+    }
+
+    [EndDateAfterStartDate(nameof(StartDate), nameof(EndDate))]
+    private sealed class NullableDateRangeModel
+    {
+        public DateTime? StartDate { get; init; }
+        public DateTime? EndDate { get; init; }
     }
 }

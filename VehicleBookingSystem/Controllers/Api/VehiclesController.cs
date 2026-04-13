@@ -233,7 +233,7 @@ public class VehiclesController : ControllerBase
         return Ok(ApiResponse<string>.Ok("Đã xóa xe thành công."));
     }
 
-    private static VehicleResponse MapVehicleResponse(Vehicle vehicle, IReadOnlyList<string> galleryUrls)
+    private VehicleResponse MapVehicleResponse(Vehicle vehicle, IReadOnlyList<string> galleryUrls)
     {
         return new VehicleResponse
         {
@@ -252,8 +252,8 @@ public class VehiclesController : ControllerBase
             Status = vehicle.Status,
             ImageUrl = vehicle.ImageUrl,
             GalleryUrls = galleryUrls,
-            Description = vehicle.Description,
-            BookingPolicyHtml = vehicle.BookingPolicyHtml
+            Description = _htmlSanitizer.SanitizeHtml(vehicle.Description),
+            BookingPolicyHtml = _htmlSanitizer.SanitizeHtml(vehicle.BookingPolicyHtml)
         };
     }
 
