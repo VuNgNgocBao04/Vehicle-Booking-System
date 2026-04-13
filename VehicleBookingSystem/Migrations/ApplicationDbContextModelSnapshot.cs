@@ -300,6 +300,43 @@ namespace VehicleBookingSystem.Migrations
                     b.ToTable("Bookings");
                 });
 
+            modelBuilder.Entity("VehicleBookingSystem.Models.BookingStatusHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ChangedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ChangedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FromStatus")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("ToStatus")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId");
+
+                    b.ToTable("BookingStatusHistories");
+                });
+
             modelBuilder.Entity("VehicleBookingSystem.Models.Payment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -508,6 +545,17 @@ namespace VehicleBookingSystem.Migrations
                     b.Navigation("Vehicle");
                 });
 
+            modelBuilder.Entity("VehicleBookingSystem.Models.BookingStatusHistory", b =>
+                {
+                    b.HasOne("VehicleBookingSystem.Models.Booking", "Booking")
+                        .WithMany("StatusHistories")
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
+                });
+
             modelBuilder.Entity("VehicleBookingSystem.Models.Payment", b =>
                 {
                     b.HasOne("VehicleBookingSystem.Models.Booking", "Booking")
@@ -538,6 +586,8 @@ namespace VehicleBookingSystem.Migrations
             modelBuilder.Entity("VehicleBookingSystem.Models.Booking", b =>
                 {
                     b.Navigation("Payment");
+
+                    b.Navigation("StatusHistories");
                 });
 
             modelBuilder.Entity("VehicleBookingSystem.Models.Vehicle", b =>

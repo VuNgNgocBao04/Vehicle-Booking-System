@@ -65,6 +65,42 @@
 			});
 		},
 
+		initScrollTopButton() {
+			const button = document.getElementById("scrollTopButton");
+			if (!button) {
+				return;
+			}
+
+			const toggleVisibility = () => {
+				if (window.scrollY > 280) {
+					button.classList.add("show");
+				} else {
+					button.classList.remove("show");
+				}
+			};
+
+			window.addEventListener("scroll", toggleVisibility, { passive: true });
+			button.addEventListener("click", () => {
+				window.scrollTo({ top: 0, behavior: "smooth" });
+			});
+
+			toggleVisibility();
+		},
+
+		initAjaxLoading() {
+			if (!window.jQuery) {
+				return;
+			}
+
+			$(document).ajaxStart(() => {
+				App.showLoading();
+			});
+
+			$(document).ajaxStop(() => {
+				App.hideLoading();
+			});
+		},
+
 		debounce(callback, wait = 300) {
 			let timeoutId;
 			return (...args) => {
@@ -80,5 +116,7 @@
 		App.initToasts();
 		App.initRevealAnimation();
 		App.initHeroTabs();
+		App.initScrollTopButton();
+		App.initAjaxLoading();
 	});
 })();

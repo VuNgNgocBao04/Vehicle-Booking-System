@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Http;
+using VehicleBookingSystem.Resources;
 
 namespace VehicleBookingSystem.ViewModels;
 
@@ -11,12 +12,12 @@ public class ProfileViewModel
 
 public class ProfileUpdateViewModel
 {
-    [Required(ErrorMessage = "Họ và tên là bắt buộc.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.Required))]
     [StringLength(100)]
     [Display(Name = "Họ và tên")]
     public string FullName { get; set; } = string.Empty;
 
-    [Phone(ErrorMessage = "Số điện thoại không hợp lệ.")]
+    [Phone(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.PhoneInvalid))]
     [Display(Name = "Số điện thoại")]
     public string? PhoneNumber { get; set; }
 
@@ -36,20 +37,20 @@ public class ProfileUpdateViewModel
 
 public class ChangePasswordViewModel
 {
-    [Required(ErrorMessage = "Mật khẩu hiện tại là bắt buộc.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.Required))]
     [DataType(DataType.Password)]
     [Display(Name = "Mật khẩu hiện tại")]
     public string CurrentPassword { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Mật khẩu mới là bắt buộc.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.Required))]
     [StringLength(100, MinimumLength = 8)]
     [DataType(DataType.Password)]
     [Display(Name = "Mật khẩu mới")]
     public string NewPassword { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Xác nhận mật khẩu là bắt buộc.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.Required))]
     [DataType(DataType.Password)]
-    [Compare(nameof(NewPassword), ErrorMessage = "Xác nhận mật khẩu không khớp.")]
+    [Compare(nameof(NewPassword), ErrorMessageResourceType = typeof(ValidationMessages), ErrorMessageResourceName = nameof(ValidationMessages.PasswordMismatch))]
     [Display(Name = "Xác nhận mật khẩu mới")]
     public string ConfirmNewPassword { get; set; } = string.Empty;
 }

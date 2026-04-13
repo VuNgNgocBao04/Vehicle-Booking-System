@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using VehicleBookingSystem.Data;
@@ -64,9 +65,43 @@ public class HomeController : Controller
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error()
     {
+        var feature = HttpContext.Features.Get<IExceptionHandlerPathFeature>();
         var requestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
-        _logger.LogWarning("Error page requested. TraceId: {TraceId}", requestId);
+        var statusCode = HttpContext.Request.Query.TryGetValue("statusCode", out var statusCodeValues) && int.TryParse(statusCodeValues.ToString(), out var parsedStatusCode)
+            ? parsedStatusCode
+            : feature?.Error is UnauthorizedAccessException
+                ? StatusCodes.Status403Forbidden
+                : StatusCodes.Status500InternalServerError;
 
-        return View(new ErrorViewModel { RequestId = requestId });
+        var title = statusCode switch
+        {
+            StatusCodes.Status400BadRequest => "Bad Request",
+            StatusCodes.Status403Forbidden => "Forbidden",
+            StatusCodes.Status404NotFound => "Not Found",
+            _ => "An error occurred while processing your request."
+        };
+
+        var model = new ErrorViewModel
+        {
+            RequestId = requestId,
+            StatusCode = statusCode,
+            Title = title,
+            Detail = feature?.Error.Message,
+            Instance = feature?.Path
+        };
+
+        _logger.LogWarning(feature?.Error, "Error page requested. StatusCode: {StatusCode}, Path: {Path}, TraceId: {TraceId}", statusCode, feature?.Path, requestId);
+
+        if (IsApiRequest(feature?.Path))
+        {
+            return Problem(detail: model.Detail, title: model.Title, statusCode: model.StatusCode, instance: model.Instance);
+        }
+
+        return View(model);
+    }
+
+    private static bool IsApiRequest(string? path)
+    {
+        return !string.IsNullOrWhiteSpace(path) && path.StartsWith("/api", StringComparison.OrdinalIgnoreCase);
     }
 }

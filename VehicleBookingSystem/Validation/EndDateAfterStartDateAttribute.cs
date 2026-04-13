@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using System.Reflection;
+using VehicleBookingSystem.Resources;
 
 namespace VehicleBookingSystem.Validation;
 
@@ -13,35 +13,29 @@ public sealed class EndDateAfterStartDateAttribute : ValidationAttribute
     {
         _startDateProperty = startDateProperty;
         _endDateProperty = endDateProperty;
-        ErrorMessage = "Ngày kết thúc phải sau ngày bắt đầu.";
     }
 
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
     {
         var objectType = validationContext.ObjectType;
-        var startProperty = objectType.GetProperty(_startDateProperty, BindingFlags.Public | BindingFlags.Instance);
-        var endProperty = objectType.GetProperty(_endDateProperty, BindingFlags.Public | BindingFlags.Instance);
+        var startProperty = objectType.GetProperty(_startDateProperty);
+        var endProperty = objectType.GetProperty(_endDateProperty);
 
         if (startProperty is null || endProperty is null)
         {
-            return new ValidationResult("Cấu hình xác thực ngày không hợp lệ.");
+            return new ValidationResult(ValidationMessages.DateRangeConfigInvalid);
         }
 
-        var startValue = startProperty.GetValue(validationContext.ObjectInstance);
-        var endValue = endProperty.GetValue(validationContext.ObjectInstance);
+        var startValue = startProperty.GetValue(validationContext.ObjectInstance) as DateTime?;
+        var endValue = endProperty.GetValue(validationContext.ObjectInstance) as DateTime?;
 
-        if (startValue is null || endValue is null)
+        if (!startValue.HasValue || !endValue.HasValue)
         {
             return ValidationResult.Success;
         }
 
-        if (startValue is not DateTime startDate || endValue is not DateTime endDate)
-        {
-            return new ValidationResult("Cấu hình xác thực ngày không hợp lệ.");
-        }
-
-        return endDate > startDate
+        return endValue.Value > startValue.Value
             ? ValidationResult.Success
-            : new ValidationResult(ErrorMessage, [_endDateProperty]);
+            : new ValidationResult(ValidationMessages.DateRangeInvalid, [_endDateProperty]);
     }
 }

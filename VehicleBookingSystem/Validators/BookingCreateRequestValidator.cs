@@ -1,5 +1,6 @@
 using FluentValidation;
 using VehicleBookingSystem.Contracts.Bookings;
+using VehicleBookingSystem.Resources;
 
 namespace VehicleBookingSystem.Validators;
 
@@ -9,16 +10,16 @@ public sealed class BookingCreateRequestValidator : AbstractValidator<BookingCre
     {
         RuleFor(request => request.PickupDateTime)
             .GreaterThan(DateTime.UtcNow.Date.AddDays(-1))
-            .WithMessage("Ngày nhận xe không hợp lệ.");
+            .WithMessage(ValidationMessages.BookingPickupDateInvalid);
 
         RuleFor(request => request.ReturnDateTime)
             .GreaterThan(request => request.PickupDateTime)
-            .WithMessage("Ngày trả xe phải sau ngày nhận xe.");
+            .WithMessage(ValidationMessages.BookingReturnAfterPickup);
 
         RuleFor(request => request.PickupLocation)
-            .NotEmpty().WithMessage("Điểm nhận xe là bắt buộc.");
+            .NotEmpty().WithMessage(ValidationMessages.PickupLocationRequired);
 
         RuleFor(request => request.DropoffLocation)
-            .NotEmpty().WithMessage("Điểm trả xe là bắt buộc.");
+            .NotEmpty().WithMessage(ValidationMessages.DropoffLocationRequired);
     }
 }

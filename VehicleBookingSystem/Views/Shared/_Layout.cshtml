@@ -1,5 +1,19 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+@using System.Globalization
+@inject Microsoft.Extensions.Localization.IStringLocalizer<VehicleBookingSystem.Resources.SharedResource> L
+
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
+    var pageTitle = ViewData["Title"]?.ToString() ?? "Vehicle Booking";
+    var currentCulture = CultureInfo.CurrentUICulture.Name;
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+    var initials = User.Identity?.IsAuthenticated == true && !string.IsNullOrWhiteSpace(User.Identity.Name)
+        ? string.Concat(User.Identity.Name.Split('@')[0].Split('.', '-', '_').Where(part => part.Length > 0).Take(2).Select(part => char.ToUpperInvariant(part[0])))
+        : "GU";
+}
+
+<!DOCTYPE html>
+<html lang="@CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,15 +25,6 @@
     <link rel="stylesheet" href="~/VehicleBookingSystem.styles.css" asp-append-version="true" />
 </head>
 <body class="user-layout">
-    @{
-        var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
-        var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
-        var pageTitle = ViewData["Title"]?.ToString() ?? "Vehicle Booking";
-        var initials = User.Identity?.IsAuthenticated == true && !string.IsNullOrWhiteSpace(User.Identity.Name)
-            ? string.Concat(User.Identity.Name.Split('@')[0].Split('.', '-', '_').Where(part => part.Length > 0).Take(2).Select(part => char.ToUpperInvariant(part[0])))
-            : "GU";
-    }
-
     <header class="user-topbar sticky-top">
         <nav class="navbar navbar-expand-lg navbar-dark">
             <div class="container-fluid user-container">
@@ -39,32 +44,42 @@
                         <li class="nav-item"><a class="nav-link @(currentController == "Booking" ? "active" : string.Empty)" asp-area="" asp-controller="Booking" asp-action="MyBookings">Bookings</a></li>
                         @if (User.IsInRole("Admin"))
                         {
-                            <li class="nav-item"><a class="btn btn-outline-light btn-sm px-3" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Admin</a></li>
+                            <li class="nav-item"><a class="btn btn-outline-light btn-sm px-3" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">@L["Admin"]</a></li>
                         }
                     </ul>
 
-                    @if (User.Identity?.IsAuthenticated == true)
-                    {
-                        <div class="customer-header-tools ms-lg-3 mt-3 mt-lg-0">
-                            <button class="btn btn-icon" type="button" aria-label="Notifications"><i class="fa-regular fa-bell"></i><span class="badge-dot"></span></button>
-                            <button class="btn btn-icon" type="button" aria-label="Booking cart"><i class="fa-solid fa-cart-plus"></i></button>
-                            <a class="user-chip" asp-controller="Account" asp-action="Profile" title="Profile">
-                                <span class="avatar-pill">@initials</span>
-                                <span class="d-none d-md-inline">@User.Identity.Name</span>
-                            </a>
-                            <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-light btn-sm px-3">Logout</button>
-                            </form>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="ms-lg-3 mt-3 mt-lg-0 d-flex gap-2">
+                    <div class="d-flex align-items-center gap-2 ms-lg-3 mt-3 mt-lg-0">
+                        <form asp-controller="Localization" asp-action="SetLanguage" method="post" class="d-flex align-items-center gap-2 mb-0">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="returnUrl" value="@returnUrl" />
+                            <label for="userCulture" class="small text-white-50 mb-0">@L["Language"]</label>
+                            <select id="userCulture" name="culture" class="form-select form-select-sm" onchange="this.form.submit()">
+                                <option value="vi-VN" selected="@(currentCulture == "vi-VN")">@L["Vietnamese"]</option>
+                                <option value="en-US" selected="@(currentCulture == "en-US")">@L["English"]</option>
+                            </select>
+                        </form>
+
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <div class="customer-header-tools">
+                                <button class="btn btn-icon" type="button" aria-label="Notifications"><i class="fa-regular fa-bell"></i><span class="badge-dot"></span></button>
+                                <button class="btn btn-icon" type="button" aria-label="Booking cart"><i class="fa-solid fa-cart-plus"></i></button>
+                                <a class="user-chip" asp-controller="Account" asp-action="Profile" title="Profile">
+                                    <span class="avatar-pill">@initials</span>
+                                    <span class="d-none d-md-inline">@User.Identity.Name</span>
+                                </a>
+                                <form asp-area="" asp-controller="Account" asp-action="Logout" method="post" class="mb-0">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-light btn-sm px-3">Logout</button>
+                                </form>
+                            </div>
+                        }
+                        else
+                        {
                             <a class="btn btn-outline-light btn-sm px-3" asp-area="" asp-controller="Account" asp-action="Login">Login</a>
                             <a class="btn btn-light btn-sm px-3" asp-area="" asp-controller="Account" asp-action="Register">Register</a>
-                        </div>
-                    }
+                        }
+                    </div>
                 </div>
             </div>
         </nav>
@@ -134,6 +149,10 @@
             </div>
         }
     </div>
+
+    <button type="button" id="scrollTopButton" class="btn btn-primary scroll-top-btn" aria-label="@L["ScrollTop"]">
+        <i class="fa-solid fa-arrow-up"></i>
+    </button>
 
     <footer class="py-3 mt-4">
         <div class="user-container d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">

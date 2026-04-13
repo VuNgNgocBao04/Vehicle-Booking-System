@@ -20,6 +20,7 @@ public class Booking
     [Timestamp]
     public byte[] RowVersion { get; set; } = Array.Empty<byte>();
     public Payment? Payment { get; set; }
+    public ICollection<BookingStatusHistory> StatusHistories { get; set; } = new List<BookingStatusHistory>();
 }
 
 public enum BookingStatus
@@ -29,4 +30,16 @@ public enum BookingStatus
     Cancelled = 3,
     Rejected = 4,
     Completed = 5
+}
+
+public class BookingStatusHistory
+{
+    public Guid Id { get; set; }
+    public Guid BookingId { get; set; }
+    public Booking? Booking { get; set; }
+    public BookingStatus? FromStatus { get; set; }
+    public BookingStatus ToStatus { get; set; }
+    public DateTime ChangedAtUtc { get; set; } = DateTime.UtcNow;
+    public string ChangedBy { get; set; } = string.Empty;
+    public string? Note { get; set; }
 }

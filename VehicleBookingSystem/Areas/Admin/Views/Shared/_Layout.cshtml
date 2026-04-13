@@ -1,9 +1,12 @@
+@using System.Globalization
+@inject Microsoft.Extensions.Localization.IStringLocalizer<VehicleBookingSystem.Resources.SharedResource> L
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="@CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Vehicle Booking Admin</title>
+    <title>@ViewData["Title"] - @L["Admin"]</title>
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -14,6 +17,8 @@
     @{
         var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
         var pageTitle = ViewData["Title"]?.ToString() ?? "Admin";
+        var currentCulture = CultureInfo.CurrentUICulture.Name;
+        var returnUrl = Context.Request.Path + Context.Request.QueryString;
     }
     <div class="admin-app">
         <aside class="admin-sidebar" id="adminSidebar">
@@ -57,11 +62,20 @@
             <header class="admin-topbar">
                 <div>
                     <button class="btn btn-outline-light btn-sm d-lg-none mb-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#adminSidebarCanvas" aria-controls="adminSidebarCanvas"><i class="fa-solid fa-bars"></i></button>
-                    <div class="text-uppercase small text-white-50">Control panel</div>
+                    <div class="text-uppercase small text-white-50">@L["Admin"]</div>
                     <div class="h4 mb-0">@pageTitle</div>
                 </div>
                 <div class="d-flex align-items-center gap-3">
                     <span class="badge rounded-pill text-bg-success">System healthy</span>
+                    <form asp-area="" asp-controller="Localization" asp-action="SetLanguage" method="post" class="d-flex align-items-center gap-2 mb-0">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="returnUrl" value="@returnUrl" />
+                        <label for="adminCulture" class="small text-white-50 mb-0">@L["Language"]</label>
+                        <select id="adminCulture" name="culture" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width: 135px;">
+                            <option value="vi-VN" selected="@(currentCulture == "vi-VN")">@L["Vietnamese"]</option>
+                            <option value="en-US" selected="@(currentCulture == "en-US")">@L["English"]</option>
+                        </select>
+                    </form>
                     <a class="btn btn-outline-light btn-sm" asp-area="" asp-controller="Home" asp-action="Index">View user site</a>
                     <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
                         <button type="submit" class="btn btn-light btn-sm">Logout</button>
@@ -72,7 +86,7 @@
             <main class="admin-content">
                 <nav aria-label="breadcrumb" class="mb-3">
                     <ol class="breadcrumb app-breadcrumb admin-breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Admin</a></li>
+                        <li class="breadcrumb-item"><a asp-area="Admin" asp-controller="Dashboard" asp-action="Index">@L["Admin"]</a></li>
                         <li class="breadcrumb-item active" aria-current="page">@pageTitle</li>
                     </ol>
                 </nav>
@@ -114,6 +128,10 @@
             </div>
         }
     </div>
+
+    <button type="button" id="scrollTopButton" class="btn btn-primary scroll-top-btn" aria-label="@L["ScrollTop"]">
+        <i class="fa-solid fa-arrow-up"></i>
+    </button>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>

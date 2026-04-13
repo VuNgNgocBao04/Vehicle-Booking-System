@@ -1,5 +1,5 @@
 @model VehicleBookingSystem.ViewModels.CustomerVehicleIndexViewModel
-@inject IHtmlSanitizerService HtmlSanitizer
+@inject VehicleBookingSystem.Services.IHtmlSanitizerService HtmlSanitizer
 
 @{
     var isListView = string.Equals(Model.Filter.ViewMode, "list", StringComparison.OrdinalIgnoreCase);

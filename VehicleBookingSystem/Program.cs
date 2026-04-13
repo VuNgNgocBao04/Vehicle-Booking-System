@@ -1,35 +1,44 @@
 using System.Text;
+using System.Globalization;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using VehicleBookingSystem.Data;
+using VehicleBookingSystem.Contracts.Common;
 using VehicleBookingSystem.Models;
 using VehicleBookingSystem.Options;
+using VehicleBookingSystem.Resources;
 using VehicleBookingSystem.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
     .AddControllersWithViews()
+    .AddViewLocalization()
+    .AddDataAnnotationsLocalization(options =>
+    {
+        options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(ValidationMessages));
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = null;
     });
+
+builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+builder.Services.AddProblemDetails();
 
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 
-var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
-    ?? throw new InvalidOperationException("Jwt configuration is missing. Configure Jwt via environment variables, user secrets, or appsettings.");
-
-ValidateJwtOptions(jwtOptions);
+var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -56,6 +65,8 @@ builder.Services
     .AddAuthentication()
     .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
     {
+        var signingKey = jwtOptions.GetSigningKey(builder.Environment);
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -64,7 +75,7 @@ builder.Services
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtOptions.Issuer,
             ValidAudience = jwtOptions.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key ?? throw new InvalidOperationException("Jwt:Key is required.")))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey))
         };
     });
 
@@ -103,11 +114,35 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 builder.Services.AddSingleton<IHtmlSanitizerService, HtmlSanitizerService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+builder.Services.AddScoped<IBookingService, BookingService>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IVehicleService, VehicleService>();
+builder.Services.AddSingleton<ApiProblemDetailsFactory>();
 
 var applyMigrationsOnStartup = builder.Configuration.GetValue<bool>("StartupOptions:ApplyMigrationsOnStartup");
 var seedOnStartup = builder.Configuration.GetValue<bool>("StartupOptions:SeedOnStartup");
 
 var app = builder.Build();
+
+var supportedCultures = new[]
+{
+    new CultureInfo("vi-VN"),
+    new CultureInfo("en-US")
+};
+
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture("vi-VN"),
+    SupportedCultures = supportedCultures,
+    SupportedUICultures = supportedCultures,
+    RequestCultureProviders =
+    [
+        new CookieRequestCultureProvider(),
+        new AcceptLanguageHeaderRequestCultureProvider()
+    ]
+});
 
 if (applyMigrationsOnStartup || seedOnStartup)
 {
@@ -126,11 +161,14 @@ if (applyMigrationsOnStartup || seedOnStartup)
     }
 }
 
+app.UseExceptionHandler("/Home/Error");
+
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
+
+app.UseStatusCodePagesWithReExecute("/Home/Error", "?statusCode={0}");
 
 app.UseHttpsRedirection();
 
@@ -154,14 +192,3 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
-
-static void ValidateJwtOptions(JwtOptions jwtOptions)
-{
-    if (string.IsNullOrWhiteSpace(jwtOptions.Issuer) ||
-        string.IsNullOrWhiteSpace(jwtOptions.Audience) ||
-        string.IsNullOrWhiteSpace(jwtOptions.Key) ||
-        jwtOptions.ExpireMinutes <= 0)
-    {
-        throw new InvalidOperationException("Jwt configuration is incomplete. Set Jwt:Issuer, Jwt:Audience, Jwt:Key, and Jwt:ExpireMinutes.");
-    }
-}

@@ -1,12 +1,13 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using VehicleBookingSystem.Contracts.Bookings;
 using VehicleBookingSystem.Contracts.Common;
-using VehicleBookingSystem.Data;
 using VehicleBookingSystem.Models;
+using VehicleBookingSystem.Services;
+using VehicleBookingSystem.ViewModels;
 
 namespace VehicleBookingSystem.Controllers.Api;
 
@@ -15,152 +16,95 @@ namespace VehicleBookingSystem.Controllers.Api;
 [Authorize(AuthenticationSchemes = "Identity.Application,Bearer")]
 public class BookingsController : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IBookingService _bookingService;
+    private readonly ApiProblemDetailsFactory _problemDetailsFactory;
 
-    public BookingsController(ApplicationDbContext context)
+    public BookingsController(IBookingService bookingService, ApiProblemDetailsFactory problemDetailsFactory)
     {
-        _context = context;
+        _bookingService = bookingService;
+        _problemDetailsFactory = problemDetailsFactory;
     }
 
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<PagedResponse<BookingResponse>>> GetBookings([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    public async Task<ActionResult<ApiResponse<PagedResponse<BookingResponse>>>> GetBookings([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
-        page = Math.Max(1, page);
-        pageSize = Math.Clamp(pageSize, 1, 100);
-
-        var query = _context.Bookings
-            .AsNoTracking()
-            .Include(booking => booking.Vehicle)
-            .AsQueryable();
-
-        if (!User.IsInRole("Admin"))
+        if (!TryGetCurrentUserId(out var userId) && !User.IsInRole("Admin"))
         {
-            if (!TryGetCurrentUserId(out var userId))
-            {
-                return Forbid();
-            }
-
-            query = query.Where(booking => booking.UserId == userId);
+            return StatusCode(StatusCodes.Status403Forbidden, _problemDetailsFactory.Create(StatusCodes.Status403Forbidden, "Forbidden", "Không có quyền truy cập."));
         }
 
-        var totalItems = await query.CountAsync();
-        var items = await query
-            .OrderByDescending(booking => booking.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(booking => MapBookingResponse(booking))
-            .ToListAsync();
-
-        return Ok(new PagedResponse<BookingResponse>
+        var bookings = await _bookingService.GetApiBookingsAsync(userId, User.IsInRole("Admin"), page, pageSize);
+        var items = bookings.Items.Select(MapBookingResponse).ToList();
+        var response = new PagedResponse<BookingResponse>
         {
             Items = items,
-            Page = page,
-            PageSize = pageSize,
-            TotalItems = totalItems
-        });
+            Page = bookings.Page,
+            PageSize = bookings.PageSize,
+            TotalItems = bookings.TotalItems
+        };
+
+        return Ok(ApiResponse<PagedResponse<BookingResponse>>.Ok(response));
     }
 
     [HttpGet("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<BookingResponse>> GetById(Guid id)
+    public async Task<ActionResult<ApiResponse<BookingResponse>>> GetById(Guid id)
     {
-        var booking = await _context.Bookings
-            .AsNoTracking()
-            .Include(item => item.Vehicle)
-            .FirstOrDefaultAsync(item => item.Id == id);
+        if (!TryGetCurrentUserId(out var userId) && !User.IsInRole("Admin"))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, _problemDetailsFactory.Create(StatusCodes.Status403Forbidden, "Forbidden", "Không có quyền truy cập."));
+        }
 
+        var booking = await _bookingService.GetApiBookingAsync(id, userId, User.IsInRole("Admin"));
         if (booking is null)
         {
-            return NotFound(new { message = "Không tìm thấy đơn đặt xe." });
+            return NotFound(_problemDetailsFactory.Create(StatusCodes.Status404NotFound, "Not Found", "Không tìm thấy đơn đặt xe."));
         }
 
-        if (!User.IsInRole("Admin"))
-        {
-            if (!TryGetCurrentUserId(out var userId))
-            {
-                return Forbid();
-            }
-
-            if (booking.UserId != userId)
-            {
-                return Forbid();
-            }
-        }
-
-        return Ok(MapBookingResponse(booking));
+        return Ok(ApiResponse<BookingResponse>.Ok(MapBookingResponse(booking)));
     }
 
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BookingResponse>> Create([FromBody] BookingCreateRequest request)
+    public async Task<ActionResult<ApiResponse<BookingResponse>>> Create([FromBody] BookingCreateRequest request)
     {
         if (!TryGetCurrentUserId(out var userId))
         {
-            return Forbid();
+            return StatusCode(StatusCodes.Status403Forbidden, _problemDetailsFactory.Create(StatusCodes.Status403Forbidden, "Forbidden", "Không có quyền truy cập."));
         }
 
-        var vehicle = await _context.Vehicles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(item => item.Id == request.VehicleId && item.Status == VehicleStatus.Available);
-
-        if (vehicle is null)
+        var createModel = new BookingCreateViewModel
         {
-            return NotFound(new { message = "Không tìm thấy xe khả dụng." });
-        }
-
-        var isAvailable = !await _context.Bookings.AnyAsync(booking =>
-            booking.VehicleId == request.VehicleId &&
-            booking.Status != BookingStatus.Cancelled &&
-            booking.Status != BookingStatus.Rejected &&
-            booking.Status != BookingStatus.Completed &&
-            request.PickupDateTime < booking.ReturnDateTime &&
-            request.ReturnDateTime > booking.PickupDateTime);
-
-        if (!isAvailable)
-        {
-            return BadRequest(new { message = "Xe không còn trống trong khoảng thời gian đã chọn." });
-        }
-
-        var totalAmount = CalculateTotal(vehicle.DailyRate, request.PickupDateTime, request.ReturnDateTime);
-
-        var bookingEntity = new Booking
-        {
-            Id = Guid.NewGuid(),
-            BookingCode = $"BK-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}",
-            UserId = userId,
             VehicleId = request.VehicleId,
-            PickupLocation = request.PickupLocation.Trim(),
-            DropoffLocation = request.DropoffLocation.Trim(),
+            PickupLocation = request.PickupLocation,
+            DropoffLocation = request.DropoffLocation,
             PickupDateTime = request.PickupDateTime,
             ReturnDateTime = request.ReturnDateTime,
-            TotalAmount = totalAmount,
-            Status = BookingStatus.Pending,
-            CreatedAt = DateTime.UtcNow,
-            Payment = new Payment
-            {
-                Id = Guid.NewGuid(),
-                PaymentMethod = request.PaymentMethod,
-                PaidAmount = totalAmount,
-                Status = PaymentStatus.Pending
-            }
+            PaymentMethod = request.PaymentMethod
         };
 
-        _context.Bookings.Add(bookingEntity);
-        await _context.SaveChangesAsync();
+        var result = await _bookingService.CreateAsync(createModel, userId, User.Identity?.Name);
+        if (!result.Succeeded || result.BookingId is null)
+        {
+            var statusCode = result.ErrorMessage?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+                ? StatusCodes.Status404NotFound
+                : StatusCodes.Status400BadRequest;
 
-        var response = await _context.Bookings
-            .AsNoTracking()
-            .Include(item => item.Vehicle)
-            .Where(item => item.Id == bookingEntity.Id)
-            .Select(item => MapBookingResponse(item))
-            .FirstAsync();
+            return StatusCode(statusCode, _problemDetailsFactory.Create(statusCode, statusCode == StatusCodes.Status404NotFound ? "Not Found" : "Bad Request", result.ErrorMessage ?? "Không thể tạo đơn đặt xe."));
+        }
 
-        return CreatedAtAction(nameof(GetById), new { id = bookingEntity.Id }, response);
+        var booking = await _bookingService.GetApiBookingAsync(result.BookingId.Value, userId, true);
+        if (booking is null)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, _problemDetailsFactory.Create(StatusCodes.Status500InternalServerError, "Internal Server Error", "Không đọc được dữ liệu booking vừa tạo."));
+        }
+
+        return CreatedAtAction(nameof(GetById), new { id = booking.Id }, ApiResponse<BookingResponse>.Ok(MapBookingResponse(booking), "Booking created successfully."));
     }
 
     [HttpPut("{id:guid}/cancel")]
@@ -170,33 +114,22 @@ public class BookingsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Cancel(Guid id)
     {
-        var booking = await _context.Bookings.FirstOrDefaultAsync(item => item.Id == id);
-        if (booking is null)
+        if (!TryGetCurrentUserId(out var userId) && !User.IsInRole("Admin"))
         {
-            return NotFound(new { message = "Không tìm thấy đơn đặt xe." });
+            return StatusCode(StatusCodes.Status403Forbidden, _problemDetailsFactory.Create(StatusCodes.Status403Forbidden, "Forbidden", "Không có quyền truy cập."));
         }
 
-        if (!User.IsInRole("Admin"))
+        var result = await _bookingService.CancelApiAsync(id, userId, User.IsInRole("Admin"), User.Identity?.Name);
+        if (!result.Succeeded)
         {
-            if (!TryGetCurrentUserId(out var userId))
-            {
-                return Forbid();
-            }
+            var statusCode = result.ErrorMessage?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+                ? StatusCodes.Status404NotFound
+                : StatusCodes.Status400BadRequest;
 
-            if (booking.UserId != userId)
-            {
-                return Forbid();
-            }
+            return StatusCode(statusCode, _problemDetailsFactory.Create(statusCode, statusCode == StatusCodes.Status404NotFound ? "Not Found" : "Bad Request", result.ErrorMessage ?? "Không thể hủy booking."));
         }
 
-        if (booking.PickupDateTime <= DateTime.UtcNow.AddHours(6))
-        {
-            return BadRequest(new { message = "Chỉ được hủy trước giờ nhận xe tối thiểu 6 tiếng." });
-        }
-
-        booking.Status = BookingStatus.Cancelled;
-        await _context.SaveChangesAsync();
-        return Ok(new { message = "Đã hủy đơn đặt xe." });
+        return Ok(ApiResponse<string>.Ok("Đã hủy đơn đặt xe."));
     }
 
     private bool TryGetCurrentUserId(out Guid userId)

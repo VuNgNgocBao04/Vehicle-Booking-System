@@ -19,18 +19,20 @@ public class VehiclesController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly IHtmlSanitizerService _htmlSanitizer;
     private readonly IWebHostEnvironment _environment;
+    private readonly ApiProblemDetailsFactory _problemDetailsFactory;
 
-    public VehiclesController(ApplicationDbContext context, IHtmlSanitizerService htmlSanitizer, IWebHostEnvironment environment)
+    public VehiclesController(ApplicationDbContext context, IHtmlSanitizerService htmlSanitizer, IWebHostEnvironment environment, ApiProblemDetailsFactory problemDetailsFactory)
     {
         _context = context;
         _htmlSanitizer = htmlSanitizer;
         _environment = environment;
+        _problemDetailsFactory = problemDetailsFactory;
     }
 
     [HttpGet]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<PagedResponse<VehicleResponse>>> GetVehicles(
+    public async Task<ActionResult<ApiResponse<PagedResponse<VehicleResponse>>>> GetVehicles(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] Guid? category = null,
@@ -61,31 +63,28 @@ public class VehiclesController : ControllerBase
         }
 
         var totalItems = await query.CountAsync();
-        var vehicles = await query
+        var items = await query
             .OrderBy(vehicle => vehicle.Brand)
             .ThenBy(vehicle => vehicle.Model)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .Select(vehicle => MapVehicleResponse(vehicle, BuildGalleryUrls(vehicle.Id)))
             .ToListAsync();
 
-        var items = vehicles
-            .Select(vehicle => MapVehicleResponse(vehicle, BuildGalleryUrls(vehicle.Id)))
-            .ToList();
-
-        return Ok(new PagedResponse<VehicleResponse>
+        return Ok(ApiResponse<PagedResponse<VehicleResponse>>.Ok(new PagedResponse<VehicleResponse>
         {
             Items = items,
             Page = page,
             PageSize = pageSize,
             TotalItems = totalItems
-        });
+        }));
     }
 
     [HttpGet("{id:guid}")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<VehicleResponse>> GetById(Guid id)
+    public async Task<ActionResult<ApiResponse<VehicleResponse>>> GetById(Guid id)
     {
         var vehicle = await _context.Vehicles
             .AsNoTracking()
@@ -94,10 +93,10 @@ public class VehiclesController : ControllerBase
 
         if (vehicle is null)
         {
-            return NotFound(new { message = "Không tìm thấy xe." });
+            return NotFound(_problemDetailsFactory.Create(StatusCodes.Status404NotFound, "Not Found", "Không tìm thấy xe."));
         }
 
-        return Ok(MapVehicleResponse(vehicle, BuildGalleryUrls(vehicle.Id)));
+        return Ok(ApiResponse<VehicleResponse>.Ok(MapVehicleResponse(vehicle, BuildGalleryUrls(vehicle.Id))));
     }
 
     [HttpGet("{id:guid}/availability")]
@@ -105,17 +104,17 @@ public class VehiclesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<VehicleAvailabilityResponse>> CheckAvailability(Guid id, [FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
+    public async Task<ActionResult<ApiResponse<VehicleAvailabilityResponse>>> CheckAvailability(Guid id, [FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
     {
         if (endDate <= startDate)
         {
-            return BadRequest(new { message = "Ngày kết thúc phải sau ngày bắt đầu." });
+            return BadRequest(_problemDetailsFactory.Create(StatusCodes.Status400BadRequest, "Bad Request", "Ngày kết thúc phải sau ngày bắt đầu."));
         }
 
         var vehicleExists = await _context.Vehicles.AsNoTracking().AnyAsync(item => item.Id == id);
         if (!vehicleExists)
         {
-            return NotFound(new { message = "Không tìm thấy xe." });
+            return NotFound(_problemDetailsFactory.Create(StatusCodes.Status404NotFound, "Not Found", "Không tìm thấy xe."));
         }
 
         var isAvailable = !await _context.Bookings.AnyAsync(booking =>
@@ -126,14 +125,14 @@ public class VehiclesController : ControllerBase
             startDate < booking.ReturnDateTime &&
             endDate > booking.PickupDateTime);
 
-        return Ok(new VehicleAvailabilityResponse
+        return Ok(ApiResponse<VehicleAvailabilityResponse>.Ok(new VehicleAvailabilityResponse
         {
             VehicleId = id,
             StartDate = startDate,
             EndDate = endDate,
             IsAvailable = isAvailable,
             Message = isAvailable ? "Xe đang trống trong khoảng thời gian đã chọn." : "Xe đã được đặt trong khoảng thời gian này."
-        });
+        }));
     }
 
     [HttpPost]
@@ -141,7 +140,7 @@ public class VehiclesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<VehicleResponse>> Create([FromBody] VehicleUpsertRequest request)
+    public async Task<ActionResult<ApiResponse<VehicleResponse>>> Create([FromBody] VehicleUpsertRequest request)
     {
         if (await _context.Vehicles.AnyAsync(vehicle => vehicle.Code == request.Code || vehicle.LicensePlate == request.LicensePlate))
         {
@@ -171,7 +170,7 @@ public class VehiclesController : ControllerBase
         await _context.SaveChangesAsync();
 
         var response = MapVehicleResponse(vehicle, []);
-        return CreatedAtAction(nameof(GetById), new { id = vehicle.Id }, response);
+        return CreatedAtAction(nameof(GetById), new { id = vehicle.Id }, ApiResponse<VehicleResponse>.Ok(response, "Vehicle created successfully."));
     }
 
     [HttpPut("{id:guid}")]
@@ -179,7 +178,7 @@ public class VehiclesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<VehicleResponse>> Update(Guid id, [FromBody] VehicleUpsertRequest request)
+    public async Task<ActionResult<ApiResponse<VehicleResponse>>> Update(Guid id, [FromBody] VehicleUpsertRequest request)
     {
         var vehicle = await _context.Vehicles
             .Include(item => item.VehicleCategory)
@@ -187,7 +186,7 @@ public class VehiclesController : ControllerBase
 
         if (vehicle is null)
         {
-            return NotFound(new { message = "Không tìm thấy xe." });
+            return NotFound(_problemDetailsFactory.Create(StatusCodes.Status404NotFound, "Not Found", "Không tìm thấy xe."));
         }
 
         var duplicateExists = await _context.Vehicles.AnyAsync(item =>
@@ -214,7 +213,7 @@ public class VehiclesController : ControllerBase
         vehicle.BookingPolicyHtml = _htmlSanitizer.Sanitize(request.BookingPolicyHtml);
 
         await _context.SaveChangesAsync();
-        return Ok(MapVehicleResponse(vehicle, BuildGalleryUrls(vehicle.Id)));
+        return Ok(ApiResponse<VehicleResponse>.Ok(MapVehicleResponse(vehicle, BuildGalleryUrls(vehicle.Id)), "Vehicle updated successfully."));
     }
 
     [HttpDelete("{id:guid}")]
@@ -226,12 +225,12 @@ public class VehiclesController : ControllerBase
         var vehicle = await _context.Vehicles.FirstOrDefaultAsync(item => item.Id == id);
         if (vehicle is null)
         {
-            return NotFound(new { message = "Không tìm thấy xe." });
+            return NotFound(_problemDetailsFactory.Create(StatusCodes.Status404NotFound, "Not Found", "Không tìm thấy xe."));
         }
 
         _context.Vehicles.Remove(vehicle);
         await _context.SaveChangesAsync();
-        return Ok(new { message = "Đã xóa xe thành công." });
+        return Ok(ApiResponse<string>.Ok("Đã xóa xe thành công."));
     }
 
     private VehicleResponse MapVehicleResponse(Vehicle vehicle, IReadOnlyList<string> galleryUrls)
@@ -260,7 +259,8 @@ public class VehiclesController : ControllerBase
 
     private IReadOnlyList<string> BuildGalleryUrls(Guid vehicleId)
     {
-        var webRoot = Path.Combine(_environment.WebRootPath, "Content", "Images", "Vehicles", vehicleId.ToString("N"));
+        var relativeFolder = Path.Combine("Content", "Images", "Vehicles", vehicleId.ToString("N"));
+        var webRoot = Path.Combine(_environment.WebRootPath, relativeFolder);
         if (!Directory.Exists(webRoot))
         {
             return [];
@@ -269,7 +269,7 @@ public class VehiclesController : ControllerBase
         return Directory
             .GetFiles(webRoot)
             .OrderBy(path => path)
-            .Select(path => $"/Content/Images/Vehicles/{vehicleId:N}/{Path.GetFileName(path)}")
+            .Select(path => $"/{relativeFolder.Replace("\\", "/")}/{Path.GetFileName(path)}")
             .ToList();
     }
 }
