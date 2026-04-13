@@ -67,12 +67,16 @@ erDiagram
   }
 ```
 
-## Chạy ứng dụng
+## Chạy ứng dụng (chi tiết build + mở browser)
+
+### 1) Điều kiện trước khi chạy
+
+- Windows + SQL Server/SQL Server Express đang chạy.
+- .NET SDK 9.x (`dotnet --version`).
+- EF Core CLI (`dotnet ef --version`). Nếu chưa có:
 
 ```bash
-dotnet restore
-dotnet ef database update
-dotnet run --project VehicleBookingSystem
+dotnet tool install --global dotnet-ef
 ```
 
 Connection string cho môi trường development nằm trong `VehicleBookingSystem/appsettings.Development.json`. Nếu triển khai production, hãy đặt `ConnectionStrings__DefaultConnection`, `Jwt__Key`, và các biến cấu hình khác qua environment variables hoặc secret store của hạ tầng.
@@ -80,6 +84,59 @@ Connection string cho môi trường development nằm trong `VehicleBookingSyst
 JWT signing key không còn nằm trực tiếp trong source. Ở Development, app sẽ tự sinh key tạm để demo chạy ổn định; ở môi trường khác, bạn phải cấu hình `Jwt__Key` qua user-secrets hoặc môi trường.
 
 Hai cờ `StartupOptions:ApplyMigrationsOnStartup` và `StartupOptions:SeedOnStartup` mặc định tắt để app khởi động ổn định. Nếu cần seed dữ liệu demo, hãy bật lại thủ công và đặt `SeedData:AdminPassword` bằng user-secrets.
+
+### 2) Restore package và build solution
+
+Chạy tại thư mục root repository:
+
+```bash
+dotnet restore VehicleBookingSystem.sln
+dotnet build VehicleBookingSystem.sln -c Debug
+```
+
+### 3) Cấu hình JWT cho môi trường local (bắt buộc)
+
+App sẽ không khởi động nếu thiếu `Jwt:Key`. Thiết lập nhanh bằng biến môi trường (Command Prompt):
+
+```bash
+set Jwt__Issuer=VehicleBookingSystem
+set Jwt__Audience=VehicleBookingSystem.Client
+set Jwt__ExpireMinutes=60
+set Jwt__Key=dev-local-jwt-key-1234567890-abcdef
+```
+
+Gợi ý: dùng key dài tối thiểu 32 ký tự.
+
+### 4) Apply migration để tạo/cập nhật database
+
+```bash
+dotnet ef database update --project VehicleBookingSystem
+```
+
+### 5) Chạy web app với profile HTTPS
+
+```bash
+dotnet run --project VehicleBookingSystem --launch-profile https
+```
+
+Khi chạy thành công, app lắng nghe tại:
+
+- `https://localhost:7291`
+- `http://localhost:5294`
+
+Khuyến nghị mở bản HTTPS trên browser: `https://localhost:7291`.
+
+Nếu browser cảnh báo chứng chỉ local lần đầu, chạy:
+
+```bash
+dotnet dev-certs https --trust
+```
+
+Sau đó restart app và mở lại URL HTTPS.
+
+### 6) Dừng ứng dụng
+
+Trong terminal đang chạy app, bấm `Ctrl + C`.
 
 ## Frontend UI Smoke Tests (Playwright)
 
@@ -106,7 +163,7 @@ Các test này chỉ chạy khi bật cờ môi trường, để tránh fail tr�
 
 ```bash
 set RUN_UI_SMOKE=true
-set UI_BASE_URL=https://localhost:5001
+set UI_BASE_URL=https://localhost:7291
 set UI_ADMIN_EMAIL=admin@vehiclebooking.local
 set UI_ADMIN_PASSWORD=<your-admin-password>
 dotnet test VehicleBookingSystem.Tests/VehicleBookingSystem.Tests.csproj
