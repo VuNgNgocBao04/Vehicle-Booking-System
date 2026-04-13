@@ -72,7 +72,6 @@ public class CustomerController : Controller
         if (string.IsNullOrWhiteSpace(filter.SearchTerm) &&
             !filter.VehicleCategoryId.HasValue &&
             string.IsNullOrWhiteSpace(filter.Brand) &&
-            string.IsNullOrWhiteSpace(filter.DropoffLocation) &&
             !filter.MinDailyRate.HasValue &&
             !filter.MaxDailyRate.HasValue &&
             !filter.SeatCount.HasValue)
@@ -91,7 +90,7 @@ public class CustomerController : Controller
         {
             At = DateTime.UtcNow,
             Keyword = filter.SearchTerm ?? string.Empty,
-            FilterSummary = $"Category: {categoryName}, Brand: {(filter.Brand ?? "Any")}, Dropoff: {(filter.DropoffLocation ?? "Any")}, Seats: {(filter.SeatCount?.ToString() ?? "Any")}, Rate: {(filter.MinDailyRate?.ToString() ?? "0")} - {(filter.MaxDailyRate?.ToString() ?? "Any")}" 
+            FilterSummary = $"Category: {categoryName}, Brand: {(filter.Brand ?? "Any")}, Seats: {(filter.SeatCount?.ToString() ?? "Any")}, Rate: {(filter.MinDailyRate?.ToString() ?? "0")} - {(filter.MaxDailyRate?.ToString() ?? "Any")}"
         });
 
         if (history.Count > 10)
