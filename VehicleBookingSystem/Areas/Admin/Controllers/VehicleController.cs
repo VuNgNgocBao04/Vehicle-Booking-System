@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +17,6 @@ namespace VehicleBookingSystem.Areas.Admin.Controllers;
 public class VehicleController : Controller
 {
     private readonly ApplicationDbContext _context;
-<<<<<<< HEAD
     private readonly IVehicleService _vehicleService;
 
     public VehicleController(
@@ -27,22 +25,6 @@ public class VehicleController : Controller
     {
         _context = context;
         _vehicleService = vehicleService;
-=======
-    private readonly IFileStorageService _fileStorageService;
-    private readonly IHtmlSanitizerService _htmlSanitizer;
-    private readonly IWebHostEnvironment _environment;
-
-    public VehicleController(
-        ApplicationDbContext context,
-        IFileStorageService fileStorageService,
-        IHtmlSanitizerService htmlSanitizer,
-        IWebHostEnvironment environment)
-    {
-        _context = context;
-        _fileStorageService = fileStorageService;
-        _htmlSanitizer = htmlSanitizer;
-        _environment = environment;
->>>>>>> origin/dev
     }
 
     [HttpGet]
@@ -398,7 +380,6 @@ public class VehicleController : Controller
         }
     }
 
-<<<<<<< HEAD
     private static int ParseInt(string? raw, int fallback)
     {
         return int.TryParse(raw, out var value) ? value : fallback;
@@ -407,12 +388,6 @@ public class VehicleController : Controller
     private static string EscapeCsv(string input)
     {
         if (input.Contains(',') || input.Contains('"') || input.Contains('\n'))
-=======
-    private IReadOnlyList<string> BuildGalleryUrls(Guid vehicleId)
-    {
-        var root = Path.Combine(_environment.WebRootPath, "Content", "Images", "Vehicles", vehicleId.ToString("N"));
-        if (!Directory.Exists(root))
->>>>>>> origin/dev
         {
             return $"\"{input.Replace("\"", "\"\"")}\"";
         }

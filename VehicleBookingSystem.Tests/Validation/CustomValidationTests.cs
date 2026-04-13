@@ -45,7 +45,6 @@ public class CustomValidationTests
         Assert.Contains(results, result => result.ErrorMessage!.Contains("Ngày kết thúc"));
     }
 
-<<<<<<< HEAD
     private sealed class CultureScope : IDisposable
     {
         private readonly CultureInfo _originalCulture;
@@ -66,42 +65,6 @@ public class CustomValidationTests
             CultureInfo.CurrentCulture = _originalCulture;
             CultureInfo.CurrentUICulture = _originalUiCulture;
         }
-=======
-    [Fact]
-    public void EndDateAfterStartDate_ReturnsSuccess_WhenNullableDatesAreMissing()
-    {
-        var model = new NullableDateRangeModel
-        {
-            StartDate = null,
-            EndDate = null
-        };
-
-        var context = new ValidationContext(model);
-        var results = new List<ValidationResult>();
-
-        var valid = Validator.TryValidateObject(model, context, results, validateAllProperties: true);
-
-        Assert.True(valid);
-        Assert.Empty(results);
-    }
-
-    [Fact]
-    public void EndDateAfterStartDate_ReturnsSuccess_WhenOnlyOneNullableDateIsMissing()
-    {
-        var model = new NullableDateRangeModel
-        {
-            StartDate = DateTime.Today,
-            EndDate = null
-        };
-
-        var context = new ValidationContext(model);
-        var results = new List<ValidationResult>();
-
-        var valid = Validator.TryValidateObject(model, context, results, validateAllProperties: true);
-
-        Assert.True(valid);
-        Assert.Empty(results);
->>>>>>> origin/dev
     }
 
     private sealed class RegisterAgeModel
@@ -115,12 +78,5 @@ public class CustomValidationTests
     {
         public DateTime StartDate { get; init; }
         public DateTime EndDate { get; init; }
-    }
-
-    [EndDateAfterStartDate(nameof(StartDate), nameof(EndDate))]
-    private sealed class NullableDateRangeModel
-    {
-        public DateTime? StartDate { get; init; }
-        public DateTime? EndDate { get; init; }
     }
 }

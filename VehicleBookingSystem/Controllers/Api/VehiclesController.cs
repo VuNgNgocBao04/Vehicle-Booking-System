@@ -19,22 +19,14 @@ public class VehiclesController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly IHtmlSanitizerService _htmlSanitizer;
     private readonly IWebHostEnvironment _environment;
-<<<<<<< HEAD
     private readonly ApiProblemDetailsFactory _problemDetailsFactory;
 
     public VehiclesController(ApplicationDbContext context, IHtmlSanitizerService htmlSanitizer, IWebHostEnvironment environment, ApiProblemDetailsFactory problemDetailsFactory)
-=======
-
-    public VehiclesController(ApplicationDbContext context, IHtmlSanitizerService htmlSanitizer, IWebHostEnvironment environment)
->>>>>>> origin/dev
     {
         _context = context;
         _htmlSanitizer = htmlSanitizer;
         _environment = environment;
-<<<<<<< HEAD
         _problemDetailsFactory = problemDetailsFactory;
-=======
->>>>>>> origin/dev
     }
 
     [HttpGet]
@@ -71,22 +63,15 @@ public class VehiclesController : ControllerBase
         }
 
         var totalItems = await query.CountAsync();
-        var vehicles = await query
+        var items = await query
             .OrderBy(vehicle => vehicle.Brand)
             .ThenBy(vehicle => vehicle.Model)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .Select(vehicle => MapVehicleResponse(vehicle, BuildGalleryUrls(vehicle.Id)))
             .ToListAsync();
 
-<<<<<<< HEAD
         return Ok(ApiResponse<PagedResponse<VehicleResponse>>.Ok(new PagedResponse<VehicleResponse>
-=======
-        var items = vehicles
-            .Select(vehicle => MapVehicleResponse(vehicle, BuildGalleryUrls(vehicle.Id)))
-            .ToList();
-
-        return Ok(new PagedResponse<VehicleResponse>
->>>>>>> origin/dev
         {
             Items = items,
             Page = page,
@@ -248,7 +233,7 @@ public class VehiclesController : ControllerBase
         return Ok(ApiResponse<string>.Ok("Đã xóa xe thành công."));
     }
 
-    private VehicleResponse MapVehicleResponse(Vehicle vehicle, IReadOnlyList<string> galleryUrls)
+    private static VehicleResponse MapVehicleResponse(Vehicle vehicle, IReadOnlyList<string> galleryUrls)
     {
         return new VehicleResponse
         {
@@ -267,19 +252,15 @@ public class VehiclesController : ControllerBase
             Status = vehicle.Status,
             ImageUrl = vehicle.ImageUrl,
             GalleryUrls = galleryUrls,
-            Description = _htmlSanitizer.Sanitize(vehicle.Description),
-            BookingPolicyHtml = _htmlSanitizer.Sanitize(vehicle.BookingPolicyHtml)
+            Description = vehicle.Description,
+            BookingPolicyHtml = vehicle.BookingPolicyHtml
         };
     }
 
     private IReadOnlyList<string> BuildGalleryUrls(Guid vehicleId)
     {
-<<<<<<< HEAD
         var relativeFolder = Path.Combine("Content", "Images", "Vehicles", vehicleId.ToString("N"));
         var webRoot = Path.Combine(_environment.WebRootPath, relativeFolder);
-=======
-        var webRoot = Path.Combine(_environment.WebRootPath, "Content", "Images", "Vehicles", vehicleId.ToString("N"));
->>>>>>> origin/dev
         if (!Directory.Exists(webRoot))
         {
             return [];
@@ -288,7 +269,7 @@ public class VehiclesController : ControllerBase
         return Directory
             .GetFiles(webRoot)
             .OrderBy(path => path)
-            .Select(path => $"/Content/Images/Vehicles/{vehicleId:N}/{Path.GetFileName(path)}")
+            .Select(path => $"/{relativeFolder.Replace("\\", "/")}/{Path.GetFileName(path)}")
             .ToList();
     }
 }

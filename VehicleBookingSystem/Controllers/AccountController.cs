@@ -58,65 +58,8 @@ public class AccountController : Controller
             return View(model);
         }
 
-<<<<<<< HEAD
         await _signInManager.SignInAsync(result.User, isPersistent: false);
         await StoreUserSessionAsync(result.User);
-=======
-        var user = new AppUser
-        {
-            Id = Guid.NewGuid(),
-            UserName = model.Email,
-            Email = model.Email,
-            FullName = model.FullName.Trim(),
-            PhoneNumber = model.PhoneNumber.Trim(),
-            DateOfBirth = model.DateOfBirth,
-            EmailConfirmed = false
-        };
-
-        var createResult = await _userManager.CreateAsync(user, model.Password);
-        if (!createResult.Succeeded)
-        {
-            foreach (var error in createResult.Errors)
-            {
-                ModelState.AddModelError(string.Empty, error.Description);
-            }
-
-            return View(model);
-        }
-
-        var addRoleResult = await _userManager.AddToRoleAsync(user, "Customer");
-        if (!addRoleResult.Succeeded)
-        {
-            await _userManager.DeleteAsync(user);
-            ModelState.AddModelError(string.Empty, "Đăng ký thất bại, vui lòng thử lại.");
-            return View(model);
-        }
-
-        try
-        {
-            var avatarUrl = await _fileStorageService.SaveAvatarAsync(user.Id, model.AvatarFile);
-            if (!string.IsNullOrWhiteSpace(avatarUrl))
-            {
-                user.AvatarUrl = avatarUrl;
-                var updateResult = await _userManager.UpdateAsync(user);
-                if (!updateResult.Succeeded)
-                {
-                    await _userManager.DeleteAsync(user);
-                    ModelState.AddModelError(string.Empty, "Không thể cập nhật hồ sơ tài khoản.");
-                    return View(model);
-                }
-            }
-        }
-        catch (InvalidOperationException ex)
-        {
-            await _userManager.DeleteAsync(user);
-            ModelState.AddModelError(nameof(model.AvatarFile), ex.Message);
-            return View(model);
-        }
-
-        await _signInManager.SignInAsync(user, isPersistent: false);
-        await StoreUserSessionAsync(user);
->>>>>>> origin/dev
 
         return RedirectToAction("Index", "Customer");
     }
