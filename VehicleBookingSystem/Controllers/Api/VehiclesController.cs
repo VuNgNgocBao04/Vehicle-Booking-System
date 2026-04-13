@@ -252,8 +252,8 @@ public class VehiclesController : ControllerBase
             Status = vehicle.Status,
             ImageUrl = vehicle.ImageUrl,
             GalleryUrls = galleryUrls,
-            Description = _htmlSanitizer.SanitizeHtml(vehicle.Description),
-            BookingPolicyHtml = _htmlSanitizer.SanitizeHtml(vehicle.BookingPolicyHtml)
+            Description = _htmlSanitizer.Sanitize(vehicle.Description),
+            BookingPolicyHtml = _htmlSanitizer.Sanitize(vehicle.BookingPolicyHtml)
         };
     }
 

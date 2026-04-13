@@ -48,12 +48,6 @@ public sealed class CustomerService : ICustomerService
             query = query.Where(vehicle => vehicle.Brand == filter.Brand.Trim());
         }
 
-        if (!string.IsNullOrWhiteSpace(filter.DropoffLocation))
-        {
-            var location = filter.DropoffLocation.Trim();
-            query = query.Where(vehicle => vehicle.DropoffLocation != null && vehicle.DropoffLocation.Contains(location));
-        }
-
         if (filter.MinDailyRate.HasValue)
         {
             query = query.Where(vehicle => vehicle.DailyRate >= filter.MinDailyRate.Value);
@@ -184,6 +178,15 @@ public sealed class CustomerService : ICustomerService
     public Task<bool> VehicleExistsAsync(Guid vehicleId, CancellationToken cancellationToken = default)
     {
         return _context.Vehicles.AsNoTracking().AnyAsync(item => item.Id == vehicleId, cancellationToken);
+    }
+
+    public Task<string?> GetVehicleCategoryNameAsync(Guid categoryId, CancellationToken cancellationToken = default)
+    {
+        return _context.VehicleCategories
+            .AsNoTracking()
+            .Where(item => item.Id == categoryId)
+            .Select(item => item.Name)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     private IReadOnlyList<string> BuildGalleryUrls(Vehicle vehicle)

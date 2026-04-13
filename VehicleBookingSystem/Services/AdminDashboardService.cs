@@ -78,16 +78,16 @@ public sealed class AdminDashboardService : IAdminDashboardService
             });
         }
 
-        // Move GroupBy to SQL to avoid loading all bookings into memory
         var bookingByCategory = await _context.Bookings
             .AsNoTracking()
-            .Include(item => item.Vehicle)
-            .ThenInclude(item => item!.VehicleCategory)
             .Where(item => item.CreatedAt >= monthStart)
-            .GroupBy(item => item.Vehicle!.VehicleCategory!.Name)
+            .Select(item => item.Vehicle != null && item.Vehicle.VehicleCategory != null
+                ? item.Vehicle.VehicleCategory.Name
+                : "Unknown")
+            .GroupBy(item => item)
             .Select(group => new AdminPiePointViewModel
             {
-                Label = group.Key ?? "Unknown",
+                Label = group.Key,
                 Value = group.Count()
             })
             .OrderByDescending(item => item.Value)

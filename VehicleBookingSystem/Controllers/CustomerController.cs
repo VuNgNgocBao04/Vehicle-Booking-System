@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using VehicleBookingSystem.Data;
 using VehicleBookingSystem.Extensions;
 using VehicleBookingSystem.Models;
 using VehicleBookingSystem.Services;
@@ -13,12 +11,10 @@ namespace VehicleBookingSystem.Controllers;
 public class CustomerController : Controller
 {
     private readonly ICustomerService _customerService;
-    private readonly ApplicationDbContext _context;
 
-    public CustomerController(ICustomerService customerService, ApplicationDbContext context)
+    public CustomerController(ICustomerService customerService)
     {
         _customerService = customerService;
-        _context = context;
     }
 
     [HttpGet]
@@ -76,6 +72,7 @@ public class CustomerController : Controller
         if (string.IsNullOrWhiteSpace(filter.SearchTerm) &&
             !filter.VehicleCategoryId.HasValue &&
             string.IsNullOrWhiteSpace(filter.Brand) &&
+            string.IsNullOrWhiteSpace(filter.DropoffLocation) &&
             !filter.MinDailyRate.HasValue &&
             !filter.MaxDailyRate.HasValue &&
             !filter.SeatCount.HasValue)
@@ -86,10 +83,7 @@ public class CustomerController : Controller
         var categoryName = "Any";
         if (filter.VehicleCategoryId.HasValue)
         {
-            categoryName = await _context.VehicleCategories
-                .Where(c => c.Id == filter.VehicleCategoryId.Value)
-                .Select(c => c.Name)
-                .FirstOrDefaultAsync() ?? "Any";
+            categoryName = await _customerService.GetVehicleCategoryNameAsync(filter.VehicleCategoryId.Value) ?? "Any";
         }
 
         var history = HttpContext.Session.GetObject<List<VehicleSearchHistoryItem>>(SessionKeys.VehicleSearchHistory) ?? [];
@@ -97,7 +91,7 @@ public class CustomerController : Controller
         {
             At = DateTime.UtcNow,
             Keyword = filter.SearchTerm ?? string.Empty,
-            FilterSummary = $"Category: {categoryName}, Brand: {(filter.Brand ?? "Any")}, Seats: {(filter.SeatCount?.ToString() ?? "Any")}, Rate: {(filter.MinDailyRate?.ToString() ?? "0")} - {(filter.MaxDailyRate?.ToString() ?? "Any")}" 
+            FilterSummary = $"Category: {categoryName}, Brand: {(filter.Brand ?? "Any")}, Dropoff: {(filter.DropoffLocation ?? "Any")}, Seats: {(filter.SeatCount?.ToString() ?? "Any")}, Rate: {(filter.MinDailyRate?.ToString() ?? "0")} - {(filter.MaxDailyRate?.ToString() ?? "Any")}" 
         });
 
         if (history.Count > 10)
@@ -106,21 +100,5 @@ public class CustomerController : Controller
         }
 
         HttpContext.Session.SetObject(SessionKeys.VehicleSearchHistory, history);
-    }
-
-    private static string NormalizeSort(string? sortBy)
-    {
-        return sortBy switch
-        {
-            "priceDesc" => "priceDesc",
-            "newest" => "newest",
-            "popular" => "popular",
-            _ => "priceAsc"
-        };
-    }
-
-    private static string NormalizeViewMode(string? viewMode)
-    {
-        return string.Equals(viewMode, "list", StringComparison.OrdinalIgnoreCase) ? "list" : "grid";
     }
 }

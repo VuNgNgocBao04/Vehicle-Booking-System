@@ -9,4 +9,5 @@ public interface ICustomerService
     Task<VehicleDetailsViewModel?> BuildDetailsAsync(Guid vehicleId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<string>> SearchSuggestionsAsync(string? term, CancellationToken cancellationToken = default);
     Task<bool> VehicleExistsAsync(Guid vehicleId, CancellationToken cancellationToken = default);
+    Task<string?> GetVehicleCategoryNameAsync(Guid categoryId, CancellationToken cancellationToken = default);
 }
