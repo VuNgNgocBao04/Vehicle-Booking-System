@@ -141,6 +141,7 @@ Trong terminal đang chạy app, bấm `Ctrl + C`.
 ## Frontend UI Smoke Tests (Playwright)
 
 Project test đã có các smoke tests cho 3 luồng critical:
+
 - Listing filter
 - Booking create (anonymous flow redirect login)
 - Admin dashboard chart render

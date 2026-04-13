@@ -10,13 +10,10 @@ public class UiSmokeTests
 
     private static string? BaseUrl => Environment.GetEnvironmentVariable("UI_BASE_URL");
 
-    [Fact]
+    [SkippableFact]
     public async Task ListingFilter_ShouldRenderResultsAfterApply()
     {
-        if (!Enabled || string.IsNullOrWhiteSpace(BaseUrl))
-        {
-            return;
-        }
+        Skip.If(!Enabled || string.IsNullOrWhiteSpace(BaseUrl), "UI smoke tests are disabled. Set RUN_UI_SMOKE=true and UI_BASE_URL to run.");
 
         await using var app = await LaunchAsync();
         var page = await app.Context.NewPageAsync();
@@ -32,13 +29,10 @@ public class UiSmokeTests
         Assert.False(string.IsNullOrWhiteSpace(content));
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task BookingCreate_ShouldReachLoginWhenAnonymousSubmit()
     {
-        if (!Enabled || string.IsNullOrWhiteSpace(BaseUrl))
-        {
-            return;
-        }
+        Skip.If(!Enabled || string.IsNullOrWhiteSpace(BaseUrl), "UI smoke tests are disabled. Set RUN_UI_SMOKE=true and UI_BASE_URL to run.");
 
         await using var app = await LaunchAsync();
         var page = await app.Context.NewPageAsync();
@@ -47,10 +41,7 @@ public class UiSmokeTests
         await page.WaitForSelectorAsync("#vehicleListContainer");
 
         var bookLinks = await page.QuerySelectorAllAsync("a:has-text('Book now')");
-        if (bookLinks.Count == 0)
-        {
-            return;
-        }
+        Skip.If(bookLinks.Count == 0, "No 'Book now' link found in current fixture data.");
 
         await bookLinks[0].ClickAsync();
         await page.WaitForSelectorAsync("#bookingForm");
@@ -69,20 +60,14 @@ public class UiSmokeTests
         Assert.Contains("/Account/Login", page.Url, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task AdminDashboard_ShouldRenderChartsWhenLoggedInAsAdmin()
     {
-        if (!Enabled || string.IsNullOrWhiteSpace(BaseUrl))
-        {
-            return;
-        }
+        Skip.If(!Enabled || string.IsNullOrWhiteSpace(BaseUrl), "UI smoke tests are disabled. Set RUN_UI_SMOKE=true and UI_BASE_URL to run.");
 
         var adminEmail = Environment.GetEnvironmentVariable("UI_ADMIN_EMAIL");
         var adminPassword = Environment.GetEnvironmentVariable("UI_ADMIN_PASSWORD");
-        if (string.IsNullOrWhiteSpace(adminEmail) || string.IsNullOrWhiteSpace(adminPassword))
-        {
-            return;
-        }
+        Skip.If(string.IsNullOrWhiteSpace(adminEmail) || string.IsNullOrWhiteSpace(adminPassword), "Admin credentials are missing. Set UI_ADMIN_EMAIL and UI_ADMIN_PASSWORD.");
 
         await using var app = await LaunchAsync();
         var page = await app.Context.NewPageAsync();

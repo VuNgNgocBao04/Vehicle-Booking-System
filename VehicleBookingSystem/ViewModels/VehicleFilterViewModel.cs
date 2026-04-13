@@ -7,6 +7,8 @@ public class VehicleFilterViewModel
 {
     [StringLength(100)]
     public string? SearchTerm { get; set; }
+    [StringLength(200)]
+    public string? DropoffLocation { get; set; }
     public Guid? VehicleCategoryId { get; set; }
     [StringLength(100)]
     public string? Brand { get; set; }
