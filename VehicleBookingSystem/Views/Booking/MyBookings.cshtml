@@ -4,22 +4,13 @@
     ViewData["Title"] = "My Bookings";
 }
 
-<div class="container py-4">
+<div class="py-3">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h4 mb-0">My Bookings</h1>
         <a class="btn btn-outline-secondary" asp-controller="Customer" asp-action="Index">Browse Vehicles</a>
     </div>
 
-    @if (TempData["Message"] is string message)
-    {
-        <div class="alert alert-success">@message</div>
-    }
-    @if (TempData["Error"] is string error)
-    {
-        <div class="alert alert-danger">@error</div>
-    }
-
-    <form method="get" class="card card-body mb-3">
+    <form method="get" class="card card-body mb-3 border-0 shadow-sm">
         <div class="row g-2">
             <div class="col-md-8">
                 <input name="searchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Search by code or plate" />
@@ -35,7 +26,7 @@
         </div>
     </form>
 
-    <div class="table-responsive">
+    <div class="table-responsive card border-0 shadow-sm">
         <table class="table table-striped align-middle">
             <thead>
                 <tr>
@@ -61,13 +52,26 @@
                         <td>@booking.Vehicle?.Brand @booking.Vehicle?.Model<br /><small class="text-muted">@booking.Vehicle?.LicensePlate</small></td>
                         <td>@booking.PickupDateTime.ToString("dd/MM/yyyy") - @booking.ReturnDateTime.ToString("dd/MM/yyyy")</td>
                         <td>@booking.TotalAmount.ToString("N0")</td>
-                        <td>@booking.Status</td>
+                        <td>
+                            @{
+                                var badgeClass = booking.Status switch
+                                {
+                                    VehicleBookingSystem.Models.BookingStatus.Pending => "bg-warning text-dark",
+                                    VehicleBookingSystem.Models.BookingStatus.Confirmed => "bg-success",
+                                    VehicleBookingSystem.Models.BookingStatus.Completed => "bg-primary",
+                                    VehicleBookingSystem.Models.BookingStatus.Cancelled => "bg-danger",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @badgeClass">@booking.Status</span>
+                        </td>
                         <td class="text-end">
+                            <a asp-action="Details" asp-route-id="@booking.Id" class="btn btn-sm btn-outline-dark">Details</a>
                             @if (booking.Status == VehicleBookingSystem.Models.BookingStatus.Pending || booking.Status == VehicleBookingSystem.Models.BookingStatus.Confirmed)
                             {
                                 <form asp-action="Cancel" asp-route-id="@booking.Id" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
-                                    <button class="btn btn-sm btn-outline-danger" type="submit">Cancel</button>
+                                    <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Cancel this booking?');">Cancel</button>
                                 </form>
                             }
                         </td>

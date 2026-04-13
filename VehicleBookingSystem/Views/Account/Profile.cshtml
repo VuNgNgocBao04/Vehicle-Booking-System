@@ -1,0 +1,109 @@
+@model VehicleBookingSystem.ViewModels.ProfileViewModel
+
+@{
+    ViewData["Title"] = "Profile";
+}
+
+<div class="row g-3 py-2">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h1 class="h5">Profile information</h1>
+                <form asp-action="Profile" method="post" enctype="multipart/form-data" class="row g-3" novalidate>
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                    <div class="col-12 d-flex align-items-center gap-3">
+                        <img id="profileAvatarPreview"
+                             src="@(string.IsNullOrWhiteSpace(Model.Update.CurrentAvatarUrl) ? "https://ui-avatars.com/api/?name=User" : Model.Update.CurrentAvatarUrl)"
+                             class="profile-avatar-preview"
+                             alt="avatar" />
+                        <div>
+                            <label asp-for="Update.AvatarFile" class="form-label"></label>
+                            <input asp-for="Update.AvatarFile" class="form-control" accept=".jpg,.jpeg,.png,.webp" id="ProfileAvatarFile" />
+                            <span asp-validation-for="Update.AvatarFile" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="Update.FullName" class="form-label"></label>
+                        <input asp-for="Update.FullName" class="form-control" />
+                        <span asp-validation-for="Update.FullName" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Update.PhoneNumber" class="form-label"></label>
+                        <input asp-for="Update.PhoneNumber" class="form-control" />
+                        <span asp-validation-for="Update.PhoneNumber" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Update.DateOfBirth" class="form-label"></label>
+                        <input asp-for="Update.DateOfBirth" class="form-control" type="date" />
+                        <span asp-validation-for="Update.DateOfBirth" class="text-danger"></span>
+                    </div>
+                    <div class="col-12">
+                        <label asp-for="Update.Address" class="form-label"></label>
+                        <textarea asp-for="Update.Address" class="form-control" rows="2"></textarea>
+                        <span asp-validation-for="Update.Address" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-12">
+                        <button class="btn btn-primary" type="submit">Update profile</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h2 class="h5">Change password</h2>
+                <form asp-action="ChangePassword" method="post" class="row g-3" novalidate>
+                    @Html.AntiForgeryToken()
+
+                    <div class="col-12">
+                        <label asp-for="ChangePassword.CurrentPassword" class="form-label"></label>
+                        <input asp-for="ChangePassword.CurrentPassword" class="form-control" autocomplete="current-password" />
+                        <span asp-validation-for="ChangePassword.CurrentPassword" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-12">
+                        <label asp-for="ChangePassword.NewPassword" class="form-label"></label>
+                        <input asp-for="ChangePassword.NewPassword" class="form-control" autocomplete="new-password" />
+                        <span asp-validation-for="ChangePassword.NewPassword" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-12">
+                        <label asp-for="ChangePassword.ConfirmNewPassword" class="form-label"></label>
+                        <input asp-for="ChangePassword.ConfirmNewPassword" class="form-control" autocomplete="new-password" />
+                        <span asp-validation-for="ChangePassword.ConfirmNewPassword" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-12">
+                        <button class="btn btn-outline-dark" type="submit">Change password</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const input = document.getElementById("ProfileAvatarFile");
+            const preview = document.getElementById("profileAvatarPreview");
+
+            input?.addEventListener("change", function () {
+                const file = input.files && input.files[0];
+                if (!file) {
+                    return;
+                }
+
+                const objectUrl = URL.createObjectURL(file);
+                preview.src = objectUrl;
+            });
+        })();
+    </script>
+}

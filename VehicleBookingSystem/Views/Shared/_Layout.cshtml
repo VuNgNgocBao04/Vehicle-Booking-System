@@ -6,78 +6,147 @@
     <title>@ViewData["Title"] - Vehicle Booking System</title>
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/VehicleBookingSystem.styles.css" asp-append-version="true" />
 </head>
 <body class="user-layout">
-    <header class="user-topbar">
+    @{
+        var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+        var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
+        var pageTitle = ViewData["Title"]?.ToString() ?? "Vehicle Booking";
+        var initials = User.Identity?.IsAuthenticated == true && !string.IsNullOrWhiteSpace(User.Identity.Name)
+            ? string.Concat(User.Identity.Name.Split('@')[0].Split('.', '-', '_').Where(part => part.Length > 0).Take(2).Select(part => char.ToUpperInvariant(part[0])))
+            : "GU";
+    }
+
+    <header class="user-topbar sticky-top">
         <nav class="navbar navbar-expand-lg navbar-dark">
-            <div class="container">
-                <a class="navbar-brand fw-bold text-uppercase" asp-area="" asp-controller="Home" asp-action="Index">Vehicle Booking System</a>
+            <div class="container-fluid user-container">
+                <button class="btn btn-outline-light d-lg-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#customerSidebar" aria-controls="customerSidebar">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <a class="navbar-brand fw-bold text-uppercase" asp-area="" asp-controller="Home" asp-action="Index">Vehicle Booking</a>
+
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#userNav" aria-controls="userNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
+
                 <div class="collapse navbar-collapse" id="userNav">
-                    <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-3">
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
-
-                        @if (User.Identity?.IsAuthenticated == true)
+                    <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+                        <li class="nav-item"><a class="nav-link @(currentController == "Home" ? "active" : string.Empty)" asp-area="" asp-controller="Home" asp-action="Index">Home</a></li>
+                        <li class="nav-item"><a class="nav-link @(currentController == "Customer" ? "active" : string.Empty)" asp-area="" asp-controller="Customer" asp-action="Index">Vehicles</a></li>
+                        <li class="nav-item"><a class="nav-link @(currentController == "Booking" ? "active" : string.Empty)" asp-area="" asp-controller="Booking" asp-action="MyBookings">Bookings</a></li>
+                        @if (User.IsInRole("Admin"))
                         {
-                            @if (User.IsInRole("Customer"))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link" asp-area="" asp-controller="Customer" asp-action="Index">Browse Vehicles</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" asp-area="" asp-controller="Booking" asp-action="MyBookings">My Bookings</a>
-                                </li>
-                            }
-
-                            @if (User.IsInRole("Admin"))
-                            {
-                                <li class="nav-item">
-                                    <a class="btn btn-outline-light btn-sm px-3" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Admin</a>
-                                </li>
-                            }
-
-                            <li class="nav-item">
-                                <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-light btn-sm px-3">Logout</button>
-                                </form>
-                            </li>
-                        }
-                        else
-                        {
-                            <li class="nav-item">
-                                <a class="btn btn-outline-light btn-sm px-3" asp-area="" asp-controller="Account" asp-action="Login">Login</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="btn btn-light btn-sm px-3" asp-area="" asp-controller="Account" asp-action="Register">Register</a>
-                            </li>
+                            <li class="nav-item"><a class="btn btn-outline-light btn-sm px-3" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Admin</a></li>
                         }
                     </ul>
+
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <div class="customer-header-tools ms-lg-3 mt-3 mt-lg-0">
+                            <button class="btn btn-icon" type="button" aria-label="Notifications"><i class="fa-regular fa-bell"></i><span class="badge-dot"></span></button>
+                            <button class="btn btn-icon" type="button" aria-label="Booking cart"><i class="fa-solid fa-cart-plus"></i></button>
+                            <a class="user-chip" asp-controller="Account" asp-action="Profile" title="Profile">
+                                <span class="avatar-pill">@initials</span>
+                                <span class="d-none d-md-inline">@User.Identity.Name</span>
+                            </a>
+                            <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-light btn-sm px-3">Logout</button>
+                            </form>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="ms-lg-3 mt-3 mt-lg-0 d-flex gap-2">
+                            <a class="btn btn-outline-light btn-sm px-3" asp-area="" asp-controller="Account" asp-action="Login">Login</a>
+                            <a class="btn btn-light btn-sm px-3" asp-area="" asp-controller="Account" asp-action="Register">Register</a>
+                        </div>
+                    }
                 </div>
             </div>
         </nav>
     </header>
 
-    <main class="user-shell">
-        @RenderBody()
-    </main>
+    <div class="user-content-wrap user-container">
+        <aside class="customer-sidebar d-none d-lg-block">
+            <div class="sidebar-title">Navigation</div>
+            <a class="sidebar-link @(currentController == "Home" ? "active" : string.Empty)" asp-controller="Home" asp-action="Index"><i class="fa-solid fa-house"></i> <span>Home</span></a>
+            <a class="sidebar-link @(currentController == "Customer" ? "active" : string.Empty)" asp-controller="Customer" asp-action="Index"><i class="fa-solid fa-car-side"></i> <span>Find Vehicles</span></a>
+            <a class="sidebar-link @(currentController == "Booking" ? "active" : string.Empty)" asp-controller="Booking" asp-action="MyBookings"><i class="fa-solid fa-calendar-check"></i> <span>My Bookings</span></a>
+            <a class="sidebar-link @(currentController == "Account" && currentAction == "Profile" ? "active" : string.Empty)" asp-controller="Account" asp-action="Profile"><i class="fa-solid fa-user-gear"></i> <span>Profile</span></a>
+            <a class="sidebar-link" asp-controller="Home" asp-action="Privacy"><i class="fa-solid fa-shield-halved"></i> <span>Privacy</span></a>
+        </aside>
 
-    <footer class="user-footer">
-        <div class="container d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
-            <div>
-                <strong>Vehicle Booking System</strong>
-                <span class="ms-2 text-white-50">User experience template</span>
+        <main class="user-shell">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb app-breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Home</a></li>
+                    @if (!string.Equals(currentController, "Home", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <li class="breadcrumb-item"><a asp-controller="@currentController" asp-action="Index">@currentController</a></li>
+                    }
+                    <li class="breadcrumb-item active" aria-current="page">@pageTitle</li>
+                </ol>
+            </nav>
+
+            @RenderBody()
+        </main>
+    </div>
+
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="customerSidebar" aria-labelledby="customerSidebarLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="customerSidebarLabel">Navigation</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <a class="sidebar-link d-block mb-2" asp-controller="Home" asp-action="Index">Home</a>
+            <a class="sidebar-link d-block mb-2" asp-controller="Customer" asp-action="Index">Find Vehicles</a>
+            <a class="sidebar-link d-block mb-2" asp-controller="Booking" asp-action="MyBookings">My Bookings</a>
+            <a class="sidebar-link d-block mb-2" asp-controller="Account" asp-action="Profile">Profile</a>
+        </div>
+    </div>
+
+    <div id="globalLoadingOverlay" class="global-loading-overlay d-none" aria-hidden="true">
+        <div class="spinner-border text-light" role="status"></div>
+        <div class="mt-2">Loading...</div>
+    </div>
+
+    <div id="appToastContainer" class="toast-container position-fixed top-0 end-0 p-3">
+        @if (TempData["Message"] is string toastMessage)
+        {
+            <div class="toast text-bg-success border-0" role="alert" data-bs-delay="3500" data-autoshow="true">
+                <div class="d-flex"><div class="toast-body">@toastMessage</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>
             </div>
-            <div class="text-white-50">&copy; 2026</div>
+        }
+        @if (TempData["Error"] is string toastError)
+        {
+            <div class="toast text-bg-danger border-0" role="alert" data-bs-delay="4500" data-autoshow="true">
+                <div class="d-flex"><div class="toast-body">@toastError</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>
+            </div>
+        }
+        @if (TempData["Warning"] is string toastWarning)
+        {
+            <div class="toast text-bg-warning border-0" role="alert" data-bs-delay="4500" data-autoshow="true">
+                <div class="d-flex"><div class="toast-body">@toastWarning</div><button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>
+            </div>
+        }
+    </div>
+
+    <footer class="py-3 mt-4">
+        <div class="user-container d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+            <div>
+                <div class="text-white-50">&copy; 2026</div>
+                <span class="ms-2 text-white-50">Book smarter, ride better.</span>
+                <div class="text-white-50 small mt-1">Hotline: 1900 1234 | support@vehiclebooking.local</div>
+            </div>
+            <div class="d-flex gap-3 small text-white-50">
+                <a class="link-light link-offset-2" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                <a class="link-light link-offset-2" asp-controller="Home" asp-action="Index">Terms</a>
+                <span>&copy; 2026</span>
+            </div>
         </div>
     </footer>
 

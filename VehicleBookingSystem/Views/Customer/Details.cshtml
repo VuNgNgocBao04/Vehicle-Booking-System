@@ -1,0 +1,92 @@
+@model VehicleBookingSystem.ViewModels.VehicleDetailsViewModel
+
+@{
+    ViewData["Title"] = "Vehicle Details";
+}
+
+<section class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+        <div class="row g-4">
+            <div class="col-lg-7">
+                @if (!Model.GalleryUrls.Any())
+                {
+                    <img src="https://images.unsplash.com/photo-1485291571150-772bcfc10da5?auto=format&fit=crop&w=1200&q=80" class="w-100 rounded-3" alt="Vehicle" />
+                }
+                else
+                {
+                    <div id="vehicleGallery" class="carousel slide" data-bs-ride="carousel">
+                        <div class="carousel-inner rounded-3">
+                            @for (var i = 0; i < Model.GalleryUrls.Count; i++)
+                            {
+                                <div class="carousel-item @(i == 0 ? "active" : string.Empty)">
+                                    <img src="@Model.GalleryUrls[i]" class="d-block w-100" style="height:360px;object-fit:cover;" alt="Vehicle image @(i + 1)" />
+                                </div>
+                            }
+                        </div>
+                        @if (Model.GalleryUrls.Count > 1)
+                        {
+                            <button class="carousel-control-prev" type="button" data-bs-target="#vehicleGallery" data-bs-slide="prev">
+                                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Previous</span>
+                            </button>
+                            <button class="carousel-control-next" type="button" data-bs-target="#vehicleGallery" data-bs-slide="next">
+                                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Next</span>
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="col-lg-5">
+                <div class="text-muted">@Model.Vehicle.VehicleCategory?.Name</div>
+                <h1 class="h3">@Model.Vehicle.Brand @Model.Vehicle.Model</h1>
+                <div class="vehicle-rating mb-2">★ ★ ★ ★ ☆</div>
+                <div class="price-chip fs-5 mb-2">@Model.Vehicle.DailyRate.ToString("N0") VND/ngày</div>
+                <p class="mb-2">@Model.Vehicle.Description</p>
+
+                <ul class="list-group list-group-flush small mb-3">
+                    <li class="list-group-item px-0"><strong>Seats:</strong> @Model.Vehicle.SeatCount</li>
+                    <li class="list-group-item px-0"><strong>Transmission:</strong> @Model.Vehicle.Transmission</li>
+                    <li class="list-group-item px-0"><strong>Fuel:</strong> @Model.Vehicle.FuelType</li>
+                    <li class="list-group-item px-0"><strong>Color:</strong> @Model.Vehicle.Color</li>
+                    <li class="list-group-item px-0"><strong>Plate:</strong> @Model.Vehicle.LicensePlate</li>
+                </ul>
+
+                <div class="d-flex gap-2">
+                    <a class="btn btn-primary" asp-controller="Booking" asp-action="Create" asp-route-vehicleId="@Model.Vehicle.Id">Book this car</a>
+                    <a class="btn btn-outline-secondary" asp-controller="Customer" asp-action="Index">Back</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+        <h2 class="h5">Booking Policy</h2>
+        @if (string.IsNullOrWhiteSpace(Model.Vehicle.BookingPolicyHtml))
+        {
+            <p class="text-muted mb-0">No policy details.</p>
+        }
+        else
+        {
+            @Html.Raw(Model.Vehicle.BookingPolicyHtml)
+        }
+    </div>
+</section>
+
+<section class="card border-0 shadow-sm">
+    <div class="card-body">
+        <h2 class="h5">Availability Calendar (21 ngày tới)</h2>
+        <div class="availability-grid mt-3">
+            @foreach (var slot in Model.AvailabilitySlots)
+            {
+                <div class="availability-cell @(slot.IsAvailable ? "available" : "busy")">
+                    <div>@slot.Date.ToString("dd/MM")</div>
+                    <div>@(slot.IsAvailable ? "Trống" : "Bận")</div>
+                </div>
+            }
+        </div>
+    </div>
+</section>

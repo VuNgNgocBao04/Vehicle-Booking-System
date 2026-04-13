@@ -1,70 +1,145 @@
-﻿@{
+﻿@model VehicleBookingSystem.ViewModels.HomeIndexViewModel
+
+@{
     ViewData["Title"] = "Home";
 }
 
-<section class="hero-panel">
-    <div class="row align-items-center g-4">
-        <div class="col-lg-7">
-            <span class="eyebrow">User template</span>
-            <h1 class="display-5 fw-bold mt-3">Book a vehicle with a calmer, faster front-end.</h1>
-            <p class="lead text-muted mt-3 mb-4">
-                The user site is intentionally lighter than the admin dashboard. It keeps the booking flow focused on search, availability, and quick actions.
+<section class="ride-hero reveal-up">
+    <div class="ride-hero-grid">
+        <div>
+            <span class="eyebrow">Ride-booking experience</span>
+            <h1 class="ride-title mt-3">Di chuyển thông minh, đặt xe trong vài giây.</h1>
+            <p class="ride-subtitle mt-3 mb-4">
+                Giao diện tập trung vào hành động quan trọng nhất: tìm xe, xem giá minh bạch, đặt lịch nhanh và theo dõi trạng thái chuyến đi.
             </p>
             <div class="d-flex flex-wrap gap-3">
-                <a class="btn btn-primary btn-lg px-4" href="#booking">Start booking</a>
-                <a class="btn btn-outline-secondary btn-lg px-4" asp-area="" asp-controller="Home" asp-action="Privacy">Learn more</a>
+                <a class="btn btn-primary btn-lg px-4" asp-area="" asp-controller="Customer" asp-action="Index">Đặt xe ngay</a>
+                <a class="btn btn-outline-secondary btn-lg px-4" href="#service-block">Khám phá dịch vụ</a>
+            </div>
+
+            <div class="ride-stats mt-4">
+                <div>
+                    <strong>2,500+</strong>
+                    <span>Chuyến mỗi ngày</span>
+                </div>
+                <div>
+                    <strong>4.9/5</strong>
+                    <span>Đánh giá khách hàng</span>
+                </div>
+                <div>
+                    <strong>24/7</strong>
+                    <span>Hỗ trợ liên tục</span>
+                </div>
             </div>
         </div>
-        <div class="col-lg-5">
-            <div class="booking-card">
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <div>
-                        <div class="text-uppercase small text-white-50">Next trip</div>
-                        <div class="h4 mb-0">Airport pickup</div>
-                    </div>
-                    <span class="status-pill">Live</span>
-                </div>
-                <div class="booking-list">
-                    <div class="booking-row">
-                        <span>From</span>
-                        <strong>District 1</strong>
-                    </div>
-                    <div class="booking-row">
-                        <span>To</span>
-                        <strong>Tan Son Nhat</strong>
-                    </div>
-                    <div class="booking-row">
-                        <span>Vehicle</span>
-                        <strong>Premium sedan</strong>
-                    </div>
-                </div>
+
+        <div class="ride-search-card reveal-up" id="booking-box">
+            <div class="ride-search-tabs mb-3">
+                <button type="button" class="ride-tab active" data-tab="now">Đi ngay</button>
+                <button type="button" class="ride-tab" data-tab="later">Đặt lịch</button>
             </div>
+
+            <form class="ride-search-form" asp-area="" asp-controller="Customer" asp-action="Index" method="get">
+                <div class="ride-field">
+                    <label for="pickupInput">Điểm đón</label>
+                    <input id="pickupInput" name="searchTerm" type="text" placeholder="Nhập khu vực hoặc địa chỉ" />
+                </div>
+                <div class="ride-field">
+                    <label for="dropoffInput">Điểm đến</label>
+                    <input id="dropoffInput" name="dropoffLocation" type="text" placeholder="Nhập điểm đến" />
+                </div>
+                <div class="ride-field-row" id="scheduleFields" hidden>
+                    <div class="ride-field">
+                        <label for="pickupDate">Ngày đi</label>
+                        <input id="pickupDate" type="date" />
+                    </div>
+                    <div class="ride-field">
+                        <label for="pickupTime">Giờ đi</label>
+                        <input id="pickupTime" type="time" />
+                    </div>
+                </div>
+
+                <button class="btn btn-primary btn-lg w-100 mt-2" type="submit">Tìm xe khả dụng</button>
+            </form>
+
+            <div class="ride-note mt-3">Mẹo: Chọn lịch trước để nhận mức giá tốt hơn vào giờ cao điểm.</div>
         </div>
     </div>
 </section>
 
-<section class="feature-grid mt-4">
-    <article class="feature-card">
-        <span class="feature-kicker">01</span>
-        <h2>Fast search</h2>
-        <p>Find vehicles and booking windows without visual clutter.</p>
-    </article>
-    <article class="feature-card">
-        <span class="feature-kicker">02</span>
-        <h2>Clear status</h2>
-        <p>Track pending, confirmed, and paid bookings from the same shell.</p>
-    </article>
-    <article class="feature-card">
-        <span class="feature-kicker">03</span>
-        <h2>Clean handoff</h2>
-        <p>Send admin operations to the separate dashboard layout when needed.</p>
-    </article>
+<section id="service-block" class="ride-services mt-4">
+    @if (!Model.Categories.Any())
+    {
+        <article class="ride-service-card reveal-up">
+            <span class="feature-kicker">C1</span>
+            <h2>No categories</h2>
+            <p>Danh mục sẽ hiển thị khi dữ liệu xe được khởi tạo.</p>
+        </article>
+    }
+    else
+    {
+        @foreach (var category in Model.Categories)
+        {
+            <article class="ride-service-card reveal-up">
+                <span class="feature-kicker">@category.AvailableCount</span>
+                <h2>@category.Name</h2>
+                <p>@category.AvailableCount xe đang sẵn sàng phục vụ.</p>
+            </article>
+        }
+    }
 </section>
 
-<section id="booking" class="action-strip mt-4">
+<section class="mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h4 mb-0">Xe nổi bật</h2>
+        <a asp-controller="Customer" asp-action="Index" class="btn btn-outline-secondary btn-sm">Xem tất cả</a>
+    </div>
+
+    <div class="row g-3">
+        @if (!Model.FeaturedVehicles.Any())
+        {
+            <div class="col-12">
+                <div class="alert alert-secondary">Chưa có dữ liệu xe nổi bật.</div>
+            </div>
+        }
+        else
+        {
+            @foreach (var vehicle in Model.FeaturedVehicles)
+            {
+                <div class="col-md-6 col-xl-4 reveal-up">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <img src="@(string.IsNullOrWhiteSpace(vehicle.ImageUrl) ? "https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=900&q=80" : vehicle.ImageUrl)"
+                             class="card-img-top vehicle-card-img"
+                             loading="lazy"
+                             alt="@vehicle.Name" />
+                        <div class="card-body">
+                            <div class="text-muted small">@vehicle.Category</div>
+                            <h3 class="h5">@vehicle.Name</h3>
+                            <div class="price-chip">@vehicle.DailyRate.ToString("N0") VND/ngày</div>
+                            <a asp-controller="Customer" asp-action="Details" asp-route-id="@vehicle.Id" class="btn btn-primary btn-sm mt-3">Chi tiết</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</section>
+
+<section class="ride-testimonials mt-4">
+    <div class="ride-quote reveal-up">
+        <p>"Mình đặt xe đi sân bay lúc 4:30 sáng và tài xế đã có mặt trước 10 phút. Rất yên tâm."</p>
+        <strong>Lan Anh, TP.HCM</strong>
+    </div>
+    <div class="ride-quote reveal-up">
+        <p>"Quy trình đặt xe cho nhóm công ty cực nhanh, giao diện rõ ràng nên team dùng rất thuận."</p>
+        <strong>Minh Quân, Hà Nội</strong>
+    </div>
+</section>
+
+<section class="ride-cta mt-4 reveal-up">
     <div>
-        <h2 class="h4 mb-2">Ready to reserve your next ride?</h2>
-        <p class="mb-0 text-white-50">The user template stays simple so booking stays the primary action.</p>
+        <h2 class="h4 mb-2">Sẵn sàng cho chuyến đi tiếp theo?</h2>
+        <p class="mb-0 text-white-50">Đặt ngay để giữ xe trong khung giờ bạn muốn.</p>
     </div>
-    <a class="btn btn-light btn-lg" href="mailto:support@vehiclebookingsystem.local">Contact support</a>
+    <a class="btn btn-light btn-lg" asp-area="" asp-controller="Customer" asp-action="Index">Mở danh sách xe</a>
 </section>

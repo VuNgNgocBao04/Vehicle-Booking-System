@@ -1,7 +1,11 @@
 @model VehicleBookingSystem.ViewModels.CustomerVehicleIndexViewModel
 @inject IHtmlSanitizerService HtmlSanitizer
 
-<div class="row g-3">
+@{
+    var isListView = string.Equals(Model.Filter.ViewMode, "list", StringComparison.OrdinalIgnoreCase);
+}
+
+<div class="row g-3 @(isListView ? "vehicle-list-item" : string.Empty)">
     @if (!Model.Vehicles.Items.Any())
     {
         <div class="col-12">
@@ -12,21 +16,32 @@
     {
         @foreach (var vehicle in Model.Vehicles.Items)
         {
-            <div class="col-md-6 col-xl-4">
-                <div class="card h-100">
+            <div class="@(isListView ? "col-12" : "col-md-6 col-xl-4")">
+                <div class="card h-100 border-0 shadow-sm">
                     <div class="card-body">
-                        <h5 class="card-title mb-1">@vehicle.Brand @vehicle.Model</h5>
-                        <div class="text-muted small mb-2">@vehicle.LicensePlate | @vehicle.VehicleCategory?.Name</div>
-                        <p class="mb-1"><strong>Rate:</strong> @vehicle.DailyRate.ToString("N0")/day</p>
-                        <p class="mb-1"><strong>Seats:</strong> @vehicle.SeatCount</p>
-                        <p class="mb-2"><strong>Status:</strong> @vehicle.Status</p>
-                        @if (!string.IsNullOrWhiteSpace(vehicle.Description))
-                        {
-                            <div class="text-muted small">@Html.Raw(HtmlSanitizer.Sanitize(vehicle.Description))</div>
-                        }
-                        <div class="d-flex gap-2">
-                            <a class="btn btn-sm btn-primary" asp-controller="Booking" asp-action="Create" asp-route-vehicleId="@vehicle.Id">Book now</a>
-                            <button type="button" class="btn btn-sm btn-outline-secondary js-load-comments" data-vehicle-id="@vehicle.Id">Load comments</button>
+                        <div class="row g-3 align-items-center">
+                            <div class="@(isListView ? "col-md-4" : "col-12")">
+                                <img src="@(string.IsNullOrWhiteSpace(vehicle.ImageUrl) ? "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=900&q=80" : vehicle.ImageUrl)"
+                                     loading="lazy"
+                                     class="vehicle-card-img"
+                                     alt="@vehicle.Brand @vehicle.Model" />
+                            </div>
+                            <div class="@(isListView ? "col-md-8" : "col-12")">
+                                <h5 class="card-title mb-1">@vehicle.Brand @vehicle.Model</h5>
+                                <div class="text-muted small mb-2">@vehicle.LicensePlate | @vehicle.VehicleCategory?.Name</div>
+                                <div class="vehicle-rating mb-2" aria-label="rating">★ ★ ★ ★ ☆</div>
+                                <p class="mb-1"><span class="price-chip">@vehicle.DailyRate.ToString("N0") VND/day</span></p>
+                                <p class="mb-2"><strong>Seats:</strong> @vehicle.SeatCount</p>
+                                @if (!string.IsNullOrWhiteSpace(vehicle.Description))
+                                {
+                                    <div class="text-muted small mb-2">@Html.Raw(HtmlSanitizer.Sanitize(vehicle.Description))</div>
+                                }
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <a class="btn btn-sm btn-primary" asp-controller="Booking" asp-action="Create" asp-route-vehicleId="@vehicle.Id">Book now</a>
+                                    <a class="btn btn-sm btn-outline-dark" asp-controller="Customer" asp-action="Details" asp-route-id="@vehicle.Id">Details</a>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary js-load-comments" data-vehicle-id="@vehicle.Id">Load comments</button>
+                                </div>
+                            </div>
                         </div>
                         <div id="comments-@vehicle.Id" class="mt-2"></div>
                     </div>
@@ -52,7 +67,10 @@
                            vehicleCategoryId = Model.Filter.VehicleCategoryId,
                            brand = Model.Filter.Brand,
                            minDailyRate = Model.Filter.MinDailyRate,
-                           maxDailyRate = Model.Filter.MaxDailyRate
+                           maxDailyRate = Model.Filter.MaxDailyRate,
+                           seatCount = Model.Filter.SeatCount,
+                           sortBy = Model.Filter.SortBy,
+                           viewMode = Model.Filter.ViewMode
                        })">@i</a>
                 </li>
             }

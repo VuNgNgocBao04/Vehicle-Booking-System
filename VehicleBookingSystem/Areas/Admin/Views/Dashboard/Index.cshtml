@@ -1,3 +1,5 @@
+@model VehicleBookingSystem.ViewModels.AdminDashboardViewModel
+
 @{
     ViewData["Title"] = "Dashboard";
 }
@@ -5,134 +7,177 @@
 <section id="overview" class="row g-3 mb-4">
     <div class="col-md-4">
         <div class="metric-card">
-            <div class="text-white-50 text-uppercase small">Active bookings</div>
-            <div class="metric-value mt-2">128</div>
-            <div class="text-white-50 mt-2">Requests waiting on approval</div>
+            <div class="text-white-50 text-uppercase small">Total Vehicles</div>
+            <div class="metric-value mt-2">@Model.TotalVehicles</div>
+            <div class="text-white-50 mt-2">Fleet currently managed</div>
         </div>
     </div>
     <div class="col-md-4">
         <div class="metric-card">
-            <div class="text-white-50 text-uppercase small">Available vehicles</div>
-            <div class="metric-value mt-2">42</div>
-            <div class="text-white-50 mt-2">Ready for immediate dispatch</div>
+            <div class="text-white-50 text-uppercase small">Bookings Today</div>
+            <div class="metric-value mt-2">@Model.BookingsToday</div>
+            <div class="text-white-50 mt-2">New booking requests</div>
         </div>
     </div>
     <div class="col-md-4">
         <div class="metric-card">
-            <div class="text-white-50 text-uppercase small">Revenue today</div>
-            <div class="metric-value mt-2">18.4M</div>
-            <div class="text-white-50 mt-2">Tracked from completed payments</div>
+            <div class="text-white-50 text-uppercase small">Revenue This Month</div>
+            <div class="metric-value mt-2">@Model.RevenueThisMonth.ToString("N0")</div>
+            <div class="text-white-50 mt-2">Paid bookings</div>
         </div>
     </div>
 </section>
 
 <section class="row g-4 mb-4">
-    <div class="col-lg-8" id="bookings">
+    <div class="col-lg-8">
         <div class="admin-card p-4 h-100">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
-                    <div class="text-uppercase small text-white-50">Bookings</div>
-                    <h2 class="h4 mb-0">Recent activity</h2>
+                    <div class="text-uppercase small text-white-50">Revenue</div>
+                    <h2 class="h4 mb-0">By Month</h2>
                 </div>
-                <span class="badge rounded-pill text-bg-warning">Needs review</span>
+                <span class="badge rounded-pill text-bg-info">Last 6 months</span>
             </div>
-
-            <div class="table-responsive">
-                <table class="table table-admin align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>Code</th>
-                            <th>Customer</th>
-                            <th>Vehicle</th>
-                            <th>Status</th>
-                            <th class="text-end">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>BK-24091</td>
-                            <td>Nguyen Anh</td>
-                            <td>VinFast VF 8</td>
-                            <td><span class="badge text-bg-success">Confirmed</span></td>
-                            <td class="text-end">2,100,000</td>
-                        </tr>
-                        <tr>
-                            <td>BK-24092</td>
-                            <td>Tran Mai</td>
-                            <td>Toyota Innova</td>
-                            <td><span class="badge text-bg-warning">Pending</span></td>
-                            <td class="text-end">1,450,000</td>
-                        </tr>
-                        <tr>
-                            <td>BK-24093</td>
-                            <td>Le Hoang</td>
-                            <td>Hyundai Accent</td>
-                            <td><span class="badge text-bg-info">Paid</span></td>
-                            <td class="text-end">960,000</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+            <canvas id="revenueChart" height="120"></canvas>
         </div>
     </div>
 
-    <div class="col-lg-4" id="fleet">
+    <div class="col-lg-4">
         <div class="admin-card p-4 h-100">
-            <div class="text-uppercase small text-white-50">Fleet</div>
-            <h2 class="h4">Quick controls</h2>
+            <div class="text-uppercase small text-white-50">Bookings by Category</div>
+            <h2 class="h4">Distribution</h2>
+            <canvas id="categoryChart" height="260"></canvas>
+
+            <div class="text-uppercase small text-white-50 mt-3">Quick actions</div>
             <div class="d-grid gap-3 mt-4">
                 <div class="admin-shell-card p-3">
-                    <div class="d-flex justify-content-between">
-                        <span>Maintenance queue</span>
-                        <strong>7</strong>
-                    </div>
+                    <a class="text-white text-decoration-none d-flex justify-content-between" asp-area="Admin" asp-controller="Booking" asp-action="Index">
+                        <span>View all bookings</span>
+                        <strong>→</strong>
+                    </a>
                 </div>
                 <div class="admin-shell-card p-3">
-                    <div class="d-flex justify-content-between">
-                        <span>Vehicles online</span>
-                        <strong>35</strong>
-                    </div>
-                </div>
-                <div class="admin-shell-card p-3">
-                    <div class="d-flex justify-content-between">
-                        <span>Pending payments</span>
-                        <strong>11</strong>
-                    </div>
+                    <a class="text-white text-decoration-none d-flex justify-content-between" asp-area="Admin" asp-controller="Vehicle" asp-action="Create">
+                        <span>Add new vehicle</span>
+                        <strong>+</strong>
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 </section>
 
-<section class="row g-4" id="users">
+<section class="row g-4">
     <div class="col-lg-6">
         <div class="admin-card p-4 h-100">
-            <div class="text-uppercase small text-white-50">Users</div>
-            <h2 class="h4">Support queue</h2>
-            <p class="text-white-50 mb-4">Keep the admin side focused on operations and handoff while the user template stays lean.</p>
-            <ul class="list-unstyled mb-0">
-                <li class="d-flex justify-content-between py-2 border-bottom border-light border-opacity-10">
-                    <span>New registrations</span>
-                    <strong>14</strong>
-                </li>
-                <li class="d-flex justify-content-between py-2 border-bottom border-light border-opacity-10">
-                    <span>Open support tickets</span>
-                    <strong>6</strong>
-                </li>
-                <li class="d-flex justify-content-between py-2">
-                    <span>Role changes this week</span>
-                    <strong>3</strong>
-                </li>
+            <div class="text-uppercase small text-white-50">Recent pending bookings</div>
+            <h2 class="h4">Needs processing</h2>
+            <ul class="list-unstyled mb-0 small">
+                @if (!Model.RecentPendingBookings.Any())
+                {
+                    <li class="py-2 text-white-50">No pending bookings.</li>
+                }
+                else
+                {
+                    @foreach (var item in Model.RecentPendingBookings)
+                    {
+                        <li class="py-2 border-bottom border-light border-opacity-10 d-flex justify-content-between gap-2">
+                            <span>
+                                <strong>@item.BookingCode</strong><br />
+                                @item.CustomerName - @item.VehicleName
+                            </span>
+                            <span class="text-end">
+                                @item.TotalAmount.ToString("N0")<br />
+                                <span class="text-white-50">@item.PickupDateTime.ToString("dd/MM")</span>
+                            </span>
+                        </li>
+                    }
+                }
             </ul>
         </div>
     </div>
     <div class="col-lg-6">
         <div class="admin-card p-4 h-100">
-            <div class="text-uppercase small text-white-50">Summary</div>
-            <h2 class="h4">What this shell keeps</h2>
-            <p class="text-white-50 mb-0">
-                A separate route, separate layout, and a smaller asset surface. That keeps the repo manageable while preserving distinct admin and user experiences.
-            </p>
+            <div class="text-uppercase small text-white-50">Maintenance queue</div>
+            <h2 class="h4">Vehicles</h2>
+            <ul class="list-unstyled mb-0 small">
+                @if (!Model.MaintenanceVehicles.Any())
+                {
+                    <li class="py-2 text-white-50">No vehicles in maintenance.</li>
+                }
+                else
+                {
+                    @foreach (var item in Model.MaintenanceVehicles)
+                    {
+                        <li class="py-2 border-bottom border-light border-opacity-10 d-flex justify-content-between">
+                            <span>@item.VehicleName</span>
+                            <span class="text-white-50">@item.LicensePlate</span>
+                        </li>
+                    }
+                }
+            </ul>
+
+            <div class="mt-3 small text-white-50">New customers this month: <strong class="text-white">@Model.NewCustomersThisMonth</strong></div>
         </div>
     </div>
 </section>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        (function () {
+            if (!window.Chart) {
+                return;
+            }
+
+            const revenueLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RevenueByMonth.Select(item => item.Label)));
+            const revenueValues = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RevenueByMonth.Select(item => item.Value)));
+            const categoryLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.BookingByCategory.Select(item => item.Label)));
+            const categoryValues = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.BookingByCategory.Select(item => item.Value)));
+
+            const revenueCtx = document.getElementById("revenueChart");
+            if (revenueCtx) {
+                new Chart(revenueCtx, {
+                    type: "line",
+                    data: {
+                        labels: revenueLabels,
+                        datasets: [{
+                            label: "Revenue",
+                            data: revenueValues,
+                            borderColor: "#14b8a6",
+                            backgroundColor: "rgba(20, 184, 166, 0.2)",
+                            fill: true,
+                            tension: 0.35
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { labels: { color: "#e5eefc" } } },
+                        scales: {
+                            x: { ticks: { color: "#c7d2fe" } },
+                            y: { ticks: { color: "#c7d2fe" } }
+                        }
+                    }
+                });
+            }
+
+            const categoryCtx = document.getElementById("categoryChart");
+            if (categoryCtx) {
+                new Chart(categoryCtx, {
+                    type: "pie",
+                    data: {
+                        labels: categoryLabels,
+                        datasets: [{
+                            data: categoryValues,
+                            backgroundColor: ["#7c3aed", "#14b8a6", "#f59e0b", "#3b82f6", "#ef4444", "#22c55e"]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { labels: { color: "#e5eefc" } } }
+                    }
+                });
+            }
+        })();
+    </script>
+}
