@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using VehicleBookingSystem.Data;
 using VehicleBookingSystem.Models;
-using VehicleBookingSystem.Services;
 using VehicleBookingSystem.ViewModels;
 
 namespace VehicleBookingSystem.Services;
@@ -55,18 +54,20 @@ public sealed class VehicleService : IVehicleService
         };
     }
 
-    public async Task<IReadOnlyList<string>> BuildGalleryUrlsAsync(Guid vehicleId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<string>> BuildGalleryUrlsAsync(Guid vehicleId, CancellationToken cancellationToken = default)
     {
         var root = Path.Combine(_environment.WebRootPath, "Content", "Images", "Vehicles", vehicleId.ToString("N"));
         if (!Directory.Exists(root))
         {
-            return [];
+            return Task.FromResult<IReadOnlyList<string>>([]);
         }
 
-        return await Task.Run(() => Directory.GetFiles(root)
+        var urls = Directory.GetFiles(root)
             .OrderBy(path => path)
             .Select(path => $"/Content/Images/Vehicles/{vehicleId:N}/{Path.GetFileName(path)}")
-            .ToList(), cancellationToken);
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<string>>(urls);
     }
 
     public async Task<VehicleCommandResult> CreateAsync(VehicleFormViewModel form, CancellationToken cancellationToken = default)
@@ -78,21 +79,10 @@ public sealed class VehicleService : IVehicleService
 
         var vehicle = new Vehicle
         {
-            Id = Guid.NewGuid(),
-            VehicleCategoryId = form.VehicleCategoryId,
-            Code = form.Code.Trim(),
-            Brand = form.Brand.Trim(),
-            Model = form.Model.Trim(),
-            LicensePlate = form.LicensePlate.Trim(),
-            SeatCount = form.SeatCount,
-            Color = form.Color.Trim(),
-            Transmission = form.Transmission.Trim(),
-            FuelType = form.FuelType.Trim(),
-            DailyRate = form.DailyRate,
-            Status = form.Status,
-            Description = _htmlSanitizer.Sanitize(form.Description),
-            BookingPolicyHtml = _htmlSanitizer.Sanitize(form.BookingPolicyHtml)
+            Id = Guid.NewGuid()
         };
+
+        ApplyFormValues(vehicle, form);
 
         try
         {
@@ -133,19 +123,7 @@ public sealed class VehicleService : IVehicleService
             return new VehicleCommandResult(false, "Vehicle code or license plate already exists.");
         }
 
-        vehicle.VehicleCategoryId = form.VehicleCategoryId;
-        vehicle.Code = form.Code.Trim();
-        vehicle.Brand = form.Brand.Trim();
-        vehicle.Model = form.Model.Trim();
-        vehicle.LicensePlate = form.LicensePlate.Trim();
-        vehicle.SeatCount = form.SeatCount;
-        vehicle.Color = form.Color.Trim();
-        vehicle.Transmission = form.Transmission.Trim();
-        vehicle.FuelType = form.FuelType.Trim();
-        vehicle.DailyRate = form.DailyRate;
-        vehicle.Status = form.Status;
-        vehicle.Description = _htmlSanitizer.Sanitize(form.Description);
-        vehicle.BookingPolicyHtml = _htmlSanitizer.Sanitize(form.BookingPolicyHtml);
+        ApplyFormValues(vehicle, form);
 
         try
         {
@@ -190,5 +168,22 @@ public sealed class VehicleService : IVehicleService
         await _fileStorageService.DeleteVehicleGalleryAsync(id, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
         return new VehicleCommandResult(true);
+    }
+
+    private void ApplyFormValues(Vehicle vehicle, VehicleFormViewModel form)
+    {
+        vehicle.VehicleCategoryId = form.VehicleCategoryId;
+        vehicle.Code = form.Code.Trim();
+        vehicle.Brand = form.Brand.Trim();
+        vehicle.Model = form.Model.Trim();
+        vehicle.LicensePlate = form.LicensePlate.Trim();
+        vehicle.SeatCount = form.SeatCount;
+        vehicle.Color = form.Color.Trim();
+        vehicle.Transmission = form.Transmission.Trim();
+        vehicle.FuelType = form.FuelType.Trim();
+        vehicle.DailyRate = form.DailyRate;
+        vehicle.Status = form.Status;
+        vehicle.Description = _htmlSanitizer.Sanitize(form.Description);
+        vehicle.BookingPolicyHtml = _htmlSanitizer.Sanitize(form.BookingPolicyHtml);
     }
 }

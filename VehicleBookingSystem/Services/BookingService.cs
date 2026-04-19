@@ -29,6 +29,7 @@ public sealed class BookingService : IBookingService
             return null;
         }
 
+        var today = DateTime.UtcNow.Date;
         var model = new BookingCreateViewModel
         {
             VehicleId = vehicle.Id,
@@ -36,8 +37,8 @@ public sealed class BookingService : IBookingService
             DailyRate = vehicle.DailyRate,
             PickupLocation = draft?.PickupLocation ?? string.Empty,
             DropoffLocation = draft?.DropoffLocation ?? string.Empty,
-            PickupDateTime = draft?.PickupDateTime.Date > DateTime.UtcNow.Date ? draft.PickupDateTime.Date : DateTime.UtcNow.Date.AddDays(1),
-            ReturnDateTime = draft?.ReturnDateTime.Date > DateTime.UtcNow.Date ? draft.ReturnDateTime.Date : DateTime.UtcNow.Date.AddDays(2),
+            PickupDateTime = draft?.PickupDateTime.Date > today ? draft.PickupDateTime.Date : today.AddDays(1),
+            ReturnDateTime = draft?.ReturnDateTime.Date > today ? draft.ReturnDateTime.Date : today.AddDays(2),
             PaymentMethod = draft?.PaymentMethod ?? PaymentMethod.Cash,
             PaymentMethodOptions = BuildPaymentMethodOptions(PaymentMethod.Cash)
         };
@@ -83,21 +84,12 @@ public sealed class BookingService : IBookingService
 
         var totalAmount = CalculateTotal(vehicle.DailyRate, model.PickupDateTime, model.ReturnDateTime);
 
-        IDbContextTransaction? transaction = null;
-        if (_context.Database.IsRelational())
-        {
-            transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
-        }
+        await using var transaction = _context.Database.IsRelational()
+            ? await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken)
+            : null;
 
         if (!await IsVehicleAvailableAsync(model.VehicleId, model.PickupDateTime, model.ReturnDateTime, cancellationToken))
         {
-            if (transaction is not null)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                await transaction.DisposeAsync();
-                transaction = null;
-            }
-
             return new BookingCommandResult(false, "Vehicle is not available in the selected period.");
         }
 
@@ -150,18 +142,9 @@ public sealed class BookingService : IBookingService
             if (transaction is not null)
             {
                 await transaction.RollbackAsync(cancellationToken);
-                await transaction.DisposeAsync();
-                transaction = null;
             }
 
             return new BookingCommandResult(false, "Unable to create booking right now. Please try again.");
-        }
-        finally
-        {
-            if (transaction is not null)
-            {
-                await transaction.DisposeAsync();
-            }
         }
 
         return new BookingCommandResult(true, null, booking.Id);
