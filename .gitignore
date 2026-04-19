@@ -2,9 +2,15 @@
 #Template for AL projects for Dynamics 365 Business Central
 #launch.json folder
 .vscode/
+.vs/
 # .NET build output
 **/bin/
 **/obj/
+# Visual Studio user files
+*.user
+*.suo
+# Local runtime upload folder
+VehicleBookingSystem/wwwroot/Content/
 #Cache folder
 .alcache/
 #Symbols folder

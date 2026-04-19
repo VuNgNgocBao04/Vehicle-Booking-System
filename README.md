@@ -1,102 +1,89 @@
-# Vehicle-Booking-System
+# Vehicle Booking System
 
-Hệ thống Quản lý và Đặt xe trực tuyến (Vehicle Booking Management System).
+Hệ thống quản lý và đặt xe trực tuyến, xây dựng trên ASP.NET Core MVC.
 
-## Kiến trúc
+Mục tiêu của dự án là số hóa quy trình tìm xe, đặt xe, theo dõi booking cho khách hàng và quản trị đội xe cho quản trị viên, đồng thời đảm bảo tính ổn định qua bộ kiểm thử tự động.
 
-Project được dựng bằng ASP.NET Core MVC + Entity Framework Core Code First + SQL Server. `Users` và `Roles` dùng ASP.NET Core Identity, còn `Vehicles`, `Bookings`, `Payments` và `VehicleCategories` là các bảng nghiệp vụ. Phần nghiệp vụ chính đã được tách vào service layer riêng: `AccountService`, `BookingService`, `CustomerService`, `VehicleService`.
+## 1. Tổng quan chức năng
 
-Ứng dụng đã được chỉnh để mở ổn trong Visual Studio 2022/2025 bằng launch profile trong `VehicleBookingSystem/Properties/launchSettings.json`. Ảnh gallery và avatar không còn phụ thuộc vào working directory hiện tại, nên chạy từ Visual Studio, `dotnet run`, hay IIS Express đều ổn định hơn.
+### 1.1 Chức năng phía khách hàng
 
-API đã chuẩn hóa response theo `ApiResponse<T>` cho dữ liệu thành công và dùng `ProblemDetails` chung cho lỗi.
+- Đăng ký, đăng nhập, quản lý tài khoản.
+- Duyệt danh sách xe và tìm kiếm theo từ khóa.
+- Lọc xe theo danh mục, hãng xe, số chỗ, khoảng giá, sắp xếp.
+- Xem chi tiết xe và lịch khả dụng theo ngày.
+- Tạo booking và theo dõi lịch sử booking cá nhân.
+- Hủy booking theo điều kiện nghiệp vụ.
 
-## ERD
+### 1.2 Chức năng phía quản trị viên
 
-```mermaid
-erDiagram
-  APPUSER ||--o{ BOOKING : makes
-  VEHICLECATEGORY ||--o{ VEHICLE : contains
-  VEHICLE ||--o{ BOOKING : booked_for
-  BOOKING ||--o| PAYMENT : has
+- Dashboard tổng quan booking, doanh thu, trạng thái.
+- Quản lý danh mục xe.
+- Quản lý xe, ảnh xe, chính sách đặt xe.
+- Quản lý booking: duyệt, từ chối, hủy, theo dõi lịch sử trạng thái.
+- Làm việc với API cho các luồng nghiệp vụ chính.
 
-  APPUSER {
-    guid Id PK
-    string UserName
-    string Email
-    string FullName
-  }
+## 2. Kiến trúc và công nghệ
 
-  APPROLE {
-    guid Id PK
-    string Name
-    string Description
-  }
+- Backend: ASP.NET Core MVC (.NET 9).
+- ORM: Entity Framework Core Code First + SQL Server.
+- AuthN/AuthZ: ASP.NET Core Identity + Role-based authorization.
+- API: Chuẩn hóa phản hồi thành công bằng ApiResponse kiểu generic, lỗi bằng ProblemDetails.
+- Validation: Data Annotations + FluentValidation.
+- Frontend: Razor Views, Bootstrap 5, jQuery, DataTables.
+- Bảo mật bổ sung: JWT cho API, rate limit cho login, session/cookie cấu hình an toàn.
+- I18N: vi-VN và en-US qua Resource files + cookie culture.
 
-  VEHICLECATEGORY {
-    guid Id PK
-    string Name
-    string Description
-  }
+## 3. Cấu trúc thư mục chính
 
-  VEHICLE {
-    guid Id PK
-    guid VehicleCategoryId FK
-    string Code
-    string Brand
-    string Model
-    string LicensePlate
-    decimal DailyRate
-    int Status
-  }
-
-  BOOKING {
-    guid Id PK
-    guid UserId FK
-    guid VehicleId FK
-    string BookingCode
-    decimal TotalAmount
-    int Status
-  }
-
-  PAYMENT {
-    guid Id PK
-    guid BookingId FK
-    decimal PaidAmount
-    int PaymentMethod
-    int Status
-  }
+```text
+Vehicle-Booking-System/
+├─ VehicleBookingSystem/               # Ứng dụng web chính
+│  ├─ Areas/Admin/                     # Khu vực quản trị
+│  ├─ Controllers/                     # MVC + API controllers
+│  ├─ Data/                            # DbContext, seed, cấu hình EF
+│  ├─ Migrations/                      # EF Core migrations
+│  ├─ Models/                          # Entity models
+│  ├─ Services/                        # Service layer nghiệp vụ
+│  ├─ ViewModels/                      # View models
+│  ├─ Views/                           # Razor views
+│  └─ wwwroot/                         # Static assets
+├─ VehicleBookingSystem.Tests/         # Bộ kiểm thử xUnit + Playwright
+├─ docs/                               # Tài liệu báo cáo, cài đặt, đóng gói, kiểm thử
+└─ VehicleBookingSystem.sln
 ```
 
-## Chạy ứng dụng (chi tiết build + mở browser)
+## 4. Yêu cầu môi trường
 
-### 1) Điều kiện trước khi chạy
+- Windows + SQL Server/SQL Server Express.
+- .NET SDK 9.x.
+- dotnet-ef (nếu cần thao tác migration từ CLI).
 
-- Windows + SQL Server/SQL Server Express đang chạy.
-- .NET SDK 9.x (`dotnet --version`).
-- EF Core CLI (`dotnet ef --version`). Nếu chưa có:
+Cài dotnet-ef nếu máy chưa có:
 
 ```bash
 dotnet tool install --global dotnet-ef
 ```
 
-Connection string cho môi trường development nằm trong `VehicleBookingSystem/appsettings.Development.json`. Nếu triển khai production, hãy đặt `ConnectionStrings__DefaultConnection`, `Jwt__Key`, và các biến cấu hình khác qua environment variables hoặc secret store của hạ tầng.
+## 5. Cài đặt và chạy nhanh
 
-JWT signing key không còn nằm trực tiếp trong source. Ở Development, app sẽ tự sinh key tạm để demo chạy ổn định; ở môi trường khác, bạn phải cấu hình `Jwt__Key` qua user-secrets hoặc môi trường.
-
-Hai cờ `StartupOptions:ApplyMigrationsOnStartup` và `StartupOptions:SeedOnStartup` mặc định tắt để app khởi động ổn định. Nếu cần seed dữ liệu demo, hãy bật lại thủ công và đặt `SeedData:AdminPassword` bằng user-secrets.
-
-### 2) Restore package và build solution
-
-Chạy tại thư mục root repository:
+### 5.1 Restore và build
 
 ```bash
 dotnet restore VehicleBookingSystem.sln
 dotnet build VehicleBookingSystem.sln -c Debug
 ```
 
-### 3) Cấu hình JWT cho môi trường local (bắt buộc)
+### 5.2 Cấu hình database
 
-App sẽ không khởi động nếu thiếu `Jwt:Key`. Thiết lập nhanh bằng biến môi trường (Command Prompt):
+- Chuỗi kết nối nằm ở VehicleBookingSystem/appsettings.Development.json.
+- Tạo/cập nhật schema bằng migration:
+
+```bash
+dotnet ef database update --project VehicleBookingSystem
+```
+
+### 5.3 Cấu hình JWT local (khuyến nghị)
 
 ```bash
 set Jwt__Issuer=VehicleBookingSystem
@@ -105,105 +92,77 @@ set Jwt__ExpireMinutes=60
 set Jwt__Key=dev-local-jwt-key-1234567890-abcdef
 ```
 
-Gợi ý: dùng key dài tối thiểu 32 ký tự.
-
-### 4) Apply migration để tạo/cập nhật database
-
-```bash
-dotnet ef database update --project VehicleBookingSystem
-```
-
-### 5) Chạy web app với profile HTTPS
+### 5.4 Chạy ứng dụng
 
 ```bash
 dotnet run --project VehicleBookingSystem --launch-profile https
 ```
 
-Khi chạy thành công, app lắng nghe tại:
+URL mặc định:
 
-- `https://localhost:7291`
-- `http://localhost:5294`
+- [https://localhost:7291](https://localhost:7291)
+- [http://localhost:5294](http://localhost:5294)
 
-Khuyến nghị mở bản HTTPS trên browser: `https://localhost:7291`.
-
-Nếu browser cảnh báo chứng chỉ local lần đầu, chạy:
+Nếu máy chưa trust chứng chỉ local:
 
 ```bash
 dotnet dev-certs https --trust
 ```
 
-Sau đó restart app và mở lại URL HTTPS.
+## 6. Kiểm thử
 
-### 6) Dừng ứng dụng
+### 6.1 Bộ test hiện có
 
-Trong terminal đang chạy app, bấm `Ctrl + C`.
+- API tests: xác minh contract và hành vi API.
+- Controller tests: xác minh hành vi controller theo trạng thái dữ liệu.
+- Service tests: kiểm thử xử lý file và ngoại lệ.
+- Validation tests: kiểm thử custom attributes/ràng buộc dữ liệu.
+- UI smoke tests (Playwright): kiểm tra nhanh các luồng giao diện trọng yếu.
 
-## Frontend UI Smoke Tests (Playwright)
+### 6.2 Lệnh chạy test
 
-Project test đã có các smoke tests cho 3 luồng critical:
-
-- Listing filter
-- Booking create (anonymous flow redirect login)
-- Admin dashboard chart render
-
-Các test UI đã được gắn category riêng: `Category=E2E`.
-
-### Lệnh pipeline mặc định (nhanh, không chạy E2E)
+Chạy toàn bộ test backend (không gồm E2E):
 
 ```bash
-dotnet test VehicleBookingSystem.Tests/VehicleBookingSystem.Tests.csproj --filter "Category!=E2E"
+dotnet test VehicleBookingSystem.sln --filter "Category!=E2E"
 ```
 
-### Lệnh chạy riêng E2E smoke tests
+Chạy full suite (bao gồm E2E, có thể skip nếu chưa bật biến môi trường):
 
 ```bash
-dotnet test VehicleBookingSystem.Tests/VehicleBookingSystem.Tests.csproj --filter "Category=E2E"
+dotnet test VehicleBookingSystem.sln
 ```
 
-Các test này chỉ chạy khi bật cờ môi trường, để tránh fail trên máy chưa chạy web app:
+Chạy E2E smoke tests:
 
 ```bash
 set RUN_UI_SMOKE=true
 set UI_BASE_URL=https://localhost:7291
 set UI_ADMIN_EMAIL=admin@vehiclebooking.local
-set UI_ADMIN_PASSWORD=<your-admin-password>
-dotnet test VehicleBookingSystem.Tests/VehicleBookingSystem.Tests.csproj
+set UI_ADMIN_PASSWORD=<admin-password>
+dotnet test VehicleBookingSystem.Tests/VehicleBookingSystem.Tests.csproj --filter "Category=E2E"
 ```
 
-Lần đầu chạy cần cài browser cho Playwright:
+## 7. Dữ liệu seed và tài khoản mẫu
+
+- Email admin mặc định: [admin@vehiclebooking.local](mailto:admin@vehiclebooking.local).
+- Mật khẩu admin: thiết lập qua user-secrets, không commit vào source.
+
+Ví dụ:
 
 ```bash
-pwsh VehicleBookingSystem.Tests/bin/Debug/net9.0/playwright.ps1 install
+dotnet user-secrets set "SeedData:AdminPassword" "<your-secure-password>" --project VehicleBookingSystem
 ```
 
-Lưu ý triển khai production: TinyMCE trong trang quản trị xe đang dùng CDN `no-api-key` cho mục đích development. Trước khi deploy, cần thay bằng API key hợp lệ (hoặc self-host) để tránh cảnh báo và giới hạn tính năng từ nhà cung cấp.
+## 8. Tài liệu dự án
 
-## Seed dữ liệu mẫu
+- Báo cáo tổng kết: docs/bao-cao-tong-ket.md
+- Hướng dẫn cài đặt và cấu hình: docs/huong-dan-cai-dat-va-cau-hinh.md
+- Hướng dẫn đóng gói sản phẩm: docs/dong-goi-san-pham.md
+- Tài liệu kiểm thử chi tiết theo mẫu báo cáo: docs/testing.md
 
-- Tài khoản admin: `admin@vehiclebooking.local`
-- Mật khẩu admin: đặt qua .NET User Secrets (không commit vào source control) khi bật `StartupOptions:SeedOnStartup`
+## 9. Ghi chú chất lượng và phạm vi
 
-  ```bash
-  dotnet user-secrets set "SeedData:AdminPassword" "<your-secure-password>" --project VehicleBookingSystem
-  ```
-
-- Role: `Admin`, `Customer`
-- Danh mục xe: `Sedan`, `SUV`, `MPV`, `Hatchback`
-- Xe mẫu đã được tạo sẵn khi ứng dụng khởi động lần đầu
-
-## Kiến trúc hiện tại
-
-- MVC controllers chỉ còn vai trò orchestration.
-- Service layer xử lý query/command cho account, booking, customer và vehicle.
-- API bookings dùng `ApiResponse<T>` và `ApiProblemDetailsFactory` để giữ response nhất quán.
-- Các lỗi runtime đi qua `HomeController.Error` để hiển thị HTML cho MVC hoặc ProblemDetails cho API.
-
-## Tài liệu nộp bài
-
-Các file Markdown phục vụ báo cáo và đóng gói được đặt trong thư mục `docs/`:
-
-- [Báo cáo tổng kết](docs/bao-cao-tong-ket.md)
-- [Hướng dẫn cài đặt và cấu hình](docs/huong-dan-cai-dat-va-cau-hinh.md)
-- [Hướng dẫn đóng gói sản phẩm](docs/dong-goi-san-pham.md)
-
-Khi hoàn thiện, hãy xuất báo cáo sang Word/PDF theo đúng định dạng yêu cầu của giảng viên và thêm ảnh minh họa thực tế vào các vị trí được đánh dấu trong báo cáo.
+- Bộ lọc danh sách xe hiện bám sát dữ liệu bảng Vehicle (không giữ tiêu chí nửa vời không có tác dụng lọc).
+- Hệ thống đã tách service layer để giảm phụ thuộc trực tiếp giữa controller và data layer.
+- Một số hạng mục nâng cao như thanh toán online, kiểm thử hiệu năng tải lớn, giám sát production-level nằm trong kế hoạch mở rộng.
